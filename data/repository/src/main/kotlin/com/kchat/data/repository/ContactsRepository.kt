@@ -1,0 +1,19 @@
+package com.kchat.data.repository
+
+import com.kchat.core.model.ContactSummary
+import kotlinx.coroutines.flow.Flow
+
+interface ContactsRepository {
+    fun observeContacts(): Flow<List<ContactSummary>>
+
+    suspend fun refreshContacts()
+
+    /** Clear cached contacts after emergency wipe. */
+    suspend fun clearForEmergencyWipe()
+
+    /** Restore defaults after logout (fake); network reloads on next refresh. */
+    fun restoreAfterLogout()
+
+    /** Returns room id for 1-1 chat (fake: deterministic; network: API). */
+    suspend fun openDirectChat(contactId: String): Result<String>
+}

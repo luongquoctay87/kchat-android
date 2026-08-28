@@ -1,0 +1,26 @@
+[
+    {
+        "merged": "com.kchat.app-debug-77:/drawable_ic_notification.xml.flat",
+        "source": "com.kchat.app-main-79:/drawable/ic_notification.xml"
+    },
+    {
+        "merged": "com.kchat.app-debug-77:/drawable_ic_launcher_full.png.flat",
+        "source": "com.kchat.app-main-79:/drawable/ic_launcher_full.png"
+    },
+    {
+        "merged": "com.kchat.app-debug-77:/xml_file_paths.xml.flat",
+        "source": "com.kchat.app-main-79:/xml/file_paths.xml"
+    },
+    {
+        "merged": "com.kchat.app-debug-77:/drawable_kchat_logo.png.flat",
+        "source": "com.kchat.app-main-79:/drawable/kchat_logo.png"
+    },
+    {
+        "merged": "com.kchat.app-debug-77:/drawable_ic_launcher.xml.flat",
+        "source": "com.kchat.app-main-79:/drawable/ic_launcher.xml"
+    },
+    {
+        "merged": "com.kchat.app-debug-77:/xml_network_security_config.xml.flat",
+        "source": "com.kchat.app-main-79:/xml/network_security_config.xml"
+    }
+]
