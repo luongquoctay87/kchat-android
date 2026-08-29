@@ -114,6 +114,10 @@ class CallViewModel @Inject constructor(
     fun onMediaReady() {
         if (mediaReady) return
         mediaReady = true
+        if (isVideo) {
+            // Warm camera + peer connection while ringing so preview works as soon as Active.
+            viewModelScope.launch { ensureWebRtc() }
+        }
         if (isOutgoing) {
             startOutgoing()
         }

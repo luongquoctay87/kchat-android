@@ -229,6 +229,7 @@ flowchart LR
 | | |
 |:--|:--|
 | File | `app/google-services.json` (package `com.kchat`) |
+| Hướng dẫn tạo Firebase | [`../docs/FIREBASE_SETUP.md`](../docs/FIREBASE_SETUP.md) |
 | Thiếu file | App chạy bình thường, **không** có push OS |
 | BE staging | `./infra/scripts/enable-staging-kchat-fcm.sh` (từ root `kpay/`) |
 
@@ -244,11 +245,13 @@ cd k-chat/android
 ./gradlew :app:assembleDebug                         # build APK
 ./gradlew :app:installDebug                          # build + cài device
 ./gradlew :app:assembleDebug -Pkchat.useFake=true    # UI fake, không API
+./gradlew :app:assembleRelease                       # prod APK — chat-api.safep4y.com
 ```
 
 | Output | Path |
 |:-------|:-----|
 | APK debug | `app/build/outputs/apk/debug/app-debug.apk` |
+| APK release (prod) | `app/build/outputs/apk/release/app-release.apk` |
 
 ```mermaid
 flowchart LR
@@ -278,16 +281,19 @@ export PATH=$PATH:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools
 
 ## Phân phối & tích hợp BE
 
-App **không deploy server** — build APK/AAB và cài nội bộ.
+App **không deploy server** — build APK nội bộ.
 
 | Việc | Thực hiện |
 |:-----|:----------|
-| Deploy API | [`../backend/README.md`](../backend/README.md) |
-| Bật push BE | `./infra/scripts/enable-staging-kchat-fcm.sh` |
-| Đổi endpoint | Sửa `build.gradle.kts` → rebuild APK |
-| Play Store | `./gradlew :app:bundleRelease` + signing *(chưa setup)* |
+| **Prod go-live** | [`PROD_DEPLOY.md`](../docs/PROD_DEPLOY.md) |
+| APK prod (nhân viên) | `./gradlew :app:assembleRelease` → `chat-api.safep4y.com` |
+| APK debug (staging) | `./gradlew :app:assembleDebug` |
+| Deploy API prod | `./infra/scripts/deploy-prod-kchat.sh --wait` |
+| Bật FCM prod | `./infra/scripts/enable-prod-kchat-fcm.sh` |
 
-**Smoke test push:** 2 emulator · 2 user khác nhau · receiver ở Home · gửi tin → kiểm tra notification shade.
+**Release** → prod · **Debug** → staging.
+
+**Smoke test push:** 2 máy · 2 user · receiver ở Home · notification shade.
 
 ---
 
@@ -314,3 +320,5 @@ App **không deploy server** — build APK/AAB và cài nội bộ.
 | Wireframe | [`UI_MOCKUP.md`](../docs/UI_MOCKUP.md) |
 | Backend | [`backend/README.md`](../backend/README.md) |
 | Backlog | [`BACKLOG.md`](../docs/BACKLOG.md) |
+| **Prod deploy** | [`PROD_DEPLOY.md`](../docs/PROD_DEPLOY.md) |
+| **Firebase (FCM)** | [`FIREBASE_SETUP.md`](../docs/FIREBASE_SETUP.md) |

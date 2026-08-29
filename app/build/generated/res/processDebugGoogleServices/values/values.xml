@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="gcm_defaultSenderId" translatable="false">291407586175</string>
-    <string name="google_api_key" translatable="false">AIzaSyALn1DdXIwBLqfm-5OE8COdMtJdc9ug5T8</string>
-    <string name="google_app_id" translatable="false">1:291407586175:android:d5a4030ab4350f8651304a</string>
-    <string name="google_crash_reporting_api_key" translatable="false">AIzaSyALn1DdXIwBLqfm-5OE8COdMtJdc9ug5T8</string>
-    <string name="google_storage_bucket" translatable="false">kchat-b6d4d.firebasestorage.app</string>
-    <string name="project_id" translatable="false">kchat-b6d4d</string>
+    <string name="gcm_defaultSenderId" translatable="false">476359459824</string>
+    <string name="google_api_key" translatable="false">AIzaSyBTMo5YXaWquqsRjBeEa8PPWQlBqsAUUfU</string>
+    <string name="google_app_id" translatable="false">1:476359459824:android:bb1e498b64a97b1056d335</string>
+    <string name="google_crash_reporting_api_key" translatable="false">AIzaSyBTMo5YXaWquqsRjBeEa8PPWQlBqsAUUfU</string>
+    <string name="google_storage_bucket" translatable="false">k-chat-e0b6a.firebasestorage.app</string>
+    <string name="project_id" translatable="false">k-chat-e0b6a</string>
 </resources>

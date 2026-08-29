@@ -8,6 +8,11 @@ plugins {
 }
 
 val hasGoogleServices = file("google-services.json").exists()
+
+/** Production API — safep4y.com (internal APK distribution). */
+val kchatProdApiUrl = "https://chat-api.safep4y.com/"
+val kchatProdWsUrl = "wss://chat-api.safep4y.com"
+
 if (hasGoogleServices) {
     apply(plugin = "com.google.gms.google-services")
 }
@@ -34,14 +39,17 @@ android {
 
     buildTypes {
         release {
+            // Internal APK only — replace with company keystore before Play Store release.
+            signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-            buildConfigField("String", "API_BASE_URL", "\"https://chat-api.example.com/\"")
-            buildConfigField("String", "WS_BASE_URL", "\"wss://chat-api.example.com\"")
+            buildConfigField("String", "API_BASE_URL", "\"$kchatProdApiUrl\"")
+            buildConfigField("String", "WS_BASE_URL", "\"$kchatProdWsUrl\"")
             buildConfigField("boolean", "USE_FAKE_DATA", "false")
+            buildConfigField("boolean", "FCM_ENABLED", hasGoogleServices.toString())
         }
         debug {
             // Emulator → host machine (k-chat-api :8864)

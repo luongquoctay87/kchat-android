@@ -462,9 +462,6 @@ private fun ActiveVideoCallContent(
                 SurfaceViewRenderer(ctx).also(onBindRemoteRenderer)
             },
             modifier = Modifier.fillMaxSize(),
-            onRelease = { renderer ->
-                runCatching { renderer.release() }
-            },
         )
         Column(
             modifier = Modifier
@@ -486,9 +483,6 @@ private fun ActiveVideoCallContent(
                         .width(110.dp)
                         .height(160.dp)
                         .clip(RoundedCornerShape(12.dp)),
-                    onRelease = { renderer ->
-                        runCatching { renderer.release() }
-                    },
                 )
             }
             Column {

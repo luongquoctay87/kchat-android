@@ -535,92 +535,92 @@ public final class DaggerKChatApplication_HiltComponents_SingletonC {
 
     @IdentifierNameString
     private static final class LazyClassKeyProvider {
-      static String com_kchat_core_navigation_viewmodel_VerifyResetOtpViewModel = "com.kchat.core.navigation.viewmodel.VerifyResetOtpViewModel";
-
-      static String com_kchat_core_navigation_viewmodel_SessionViewModel = "com.kchat.core.navigation.viewmodel.SessionViewModel";
-
-      static String com_kchat_core_navigation_viewmodel_DevicesViewModel = "com.kchat.core.navigation.viewmodel.DevicesViewModel";
-
-      static String com_kchat_core_navigation_viewmodel_GroupInfoViewModel = "com.kchat.core.navigation.viewmodel.GroupInfoViewModel";
-
       static String com_kchat_core_navigation_viewmodel_RegisterViewModel = "com.kchat.core.navigation.viewmodel.RegisterViewModel";
-
-      static String com_kchat_core_navigation_viewmodel_InChatSearchViewModel = "com.kchat.core.navigation.viewmodel.InChatSearchViewModel";
 
       static String com_kchat_core_navigation_viewmodel_ChatRoomViewModel = "com.kchat.core.navigation.viewmodel.ChatRoomViewModel";
 
-      static String com_kchat_core_navigation_viewmodel_ContactsViewModel = "com.kchat.core.navigation.viewmodel.ContactsViewModel";
-
-      static String com_kchat_core_navigation_viewmodel_LoginViewModel = "com.kchat.core.navigation.viewmodel.LoginViewModel";
-
-      static String com_kchat_core_navigation_viewmodel_PinLockViewModel = "com.kchat.core.navigation.viewmodel.PinLockViewModel";
-
       static String com_kchat_core_navigation_viewmodel_PinSettingsViewModel = "com.kchat.core.navigation.viewmodel.PinSettingsViewModel";
 
-      static String com_kchat_core_navigation_viewmodel_IncomingCallViewModel = "com.kchat.core.navigation.viewmodel.IncomingCallViewModel";
+      static String com_kchat_core_navigation_viewmodel_DevicesViewModel = "com.kchat.core.navigation.viewmodel.DevicesViewModel";
+
+      static String com_kchat_core_navigation_viewmodel_VerifyResetOtpViewModel = "com.kchat.core.navigation.viewmodel.VerifyResetOtpViewModel";
+
+      static String com_kchat_core_navigation_viewmodel_InChatSearchViewModel = "com.kchat.core.navigation.viewmodel.InChatSearchViewModel";
 
       static String com_kchat_core_navigation_viewmodel_SettingsViewModel = "com.kchat.core.navigation.viewmodel.SettingsViewModel";
 
-      static String com_kchat_core_navigation_viewmodel_ForgotPasswordViewModel = "com.kchat.core.navigation.viewmodel.ForgotPasswordViewModel";
+      static String com_kchat_core_navigation_viewmodel_ChatListViewModel = "com.kchat.core.navigation.viewmodel.ChatListViewModel";
+
+      static String com_kchat_core_navigation_viewmodel_GroupInfoViewModel = "com.kchat.core.navigation.viewmodel.GroupInfoViewModel";
 
       static String com_kchat_core_navigation_viewmodel_CallViewModel = "com.kchat.core.navigation.viewmodel.CallViewModel";
 
-      static String com_kchat_core_navigation_viewmodel_ChatListViewModel = "com.kchat.core.navigation.viewmodel.ChatListViewModel";
+      static String com_kchat_core_navigation_viewmodel_ContactsViewModel = "com.kchat.core.navigation.viewmodel.ContactsViewModel";
+
+      static String com_kchat_core_navigation_viewmodel_ForgotPasswordViewModel = "com.kchat.core.navigation.viewmodel.ForgotPasswordViewModel";
+
+      static String com_kchat_core_navigation_viewmodel_LoginViewModel = "com.kchat.core.navigation.viewmodel.LoginViewModel";
 
       static String com_kchat_core_navigation_viewmodel_CreateGroupViewModel = "com.kchat.core.navigation.viewmodel.CreateGroupViewModel";
 
+      static String com_kchat_core_navigation_viewmodel_IncomingCallViewModel = "com.kchat.core.navigation.viewmodel.IncomingCallViewModel";
+
+      static String com_kchat_core_navigation_viewmodel_PinLockViewModel = "com.kchat.core.navigation.viewmodel.PinLockViewModel";
+
+      static String com_kchat_core_navigation_viewmodel_SessionViewModel = "com.kchat.core.navigation.viewmodel.SessionViewModel";
+
       static String com_kchat_core_navigation_viewmodel_ResetPasswordViewModel = "com.kchat.core.navigation.viewmodel.ResetPasswordViewModel";
-
-      @KeepFieldType
-      VerifyResetOtpViewModel com_kchat_core_navigation_viewmodel_VerifyResetOtpViewModel2;
-
-      @KeepFieldType
-      SessionViewModel com_kchat_core_navigation_viewmodel_SessionViewModel2;
-
-      @KeepFieldType
-      DevicesViewModel com_kchat_core_navigation_viewmodel_DevicesViewModel2;
-
-      @KeepFieldType
-      GroupInfoViewModel com_kchat_core_navigation_viewmodel_GroupInfoViewModel2;
 
       @KeepFieldType
       RegisterViewModel com_kchat_core_navigation_viewmodel_RegisterViewModel2;
 
       @KeepFieldType
-      InChatSearchViewModel com_kchat_core_navigation_viewmodel_InChatSearchViewModel2;
-
-      @KeepFieldType
       ChatRoomViewModel com_kchat_core_navigation_viewmodel_ChatRoomViewModel2;
-
-      @KeepFieldType
-      ContactsViewModel com_kchat_core_navigation_viewmodel_ContactsViewModel2;
-
-      @KeepFieldType
-      LoginViewModel com_kchat_core_navigation_viewmodel_LoginViewModel2;
-
-      @KeepFieldType
-      PinLockViewModel com_kchat_core_navigation_viewmodel_PinLockViewModel2;
 
       @KeepFieldType
       PinSettingsViewModel com_kchat_core_navigation_viewmodel_PinSettingsViewModel2;
 
       @KeepFieldType
-      IncomingCallViewModel com_kchat_core_navigation_viewmodel_IncomingCallViewModel2;
+      DevicesViewModel com_kchat_core_navigation_viewmodel_DevicesViewModel2;
+
+      @KeepFieldType
+      VerifyResetOtpViewModel com_kchat_core_navigation_viewmodel_VerifyResetOtpViewModel2;
+
+      @KeepFieldType
+      InChatSearchViewModel com_kchat_core_navigation_viewmodel_InChatSearchViewModel2;
 
       @KeepFieldType
       SettingsViewModel com_kchat_core_navigation_viewmodel_SettingsViewModel2;
 
       @KeepFieldType
-      ForgotPasswordViewModel com_kchat_core_navigation_viewmodel_ForgotPasswordViewModel2;
+      ChatListViewModel com_kchat_core_navigation_viewmodel_ChatListViewModel2;
+
+      @KeepFieldType
+      GroupInfoViewModel com_kchat_core_navigation_viewmodel_GroupInfoViewModel2;
 
       @KeepFieldType
       CallViewModel com_kchat_core_navigation_viewmodel_CallViewModel2;
 
       @KeepFieldType
-      ChatListViewModel com_kchat_core_navigation_viewmodel_ChatListViewModel2;
+      ContactsViewModel com_kchat_core_navigation_viewmodel_ContactsViewModel2;
+
+      @KeepFieldType
+      ForgotPasswordViewModel com_kchat_core_navigation_viewmodel_ForgotPasswordViewModel2;
+
+      @KeepFieldType
+      LoginViewModel com_kchat_core_navigation_viewmodel_LoginViewModel2;
 
       @KeepFieldType
       CreateGroupViewModel com_kchat_core_navigation_viewmodel_CreateGroupViewModel2;
+
+      @KeepFieldType
+      IncomingCallViewModel com_kchat_core_navigation_viewmodel_IncomingCallViewModel2;
+
+      @KeepFieldType
+      PinLockViewModel com_kchat_core_navigation_viewmodel_PinLockViewModel2;
+
+      @KeepFieldType
+      SessionViewModel com_kchat_core_navigation_viewmodel_SessionViewModel2;
 
       @KeepFieldType
       ResetPasswordViewModel com_kchat_core_navigation_viewmodel_ResetPasswordViewModel2;
@@ -717,95 +717,95 @@ public final class DaggerKChatApplication_HiltComponents_SingletonC {
 
     @IdentifierNameString
     private static final class LazyClassKeyProvider {
-      static String com_kchat_core_navigation_viewmodel_ResetPasswordViewModel = "com.kchat.core.navigation.viewmodel.ResetPasswordViewModel";
-
-      static String com_kchat_core_navigation_viewmodel_RegisterViewModel = "com.kchat.core.navigation.viewmodel.RegisterViewModel";
-
-      static String com_kchat_core_navigation_viewmodel_IncomingCallViewModel = "com.kchat.core.navigation.viewmodel.IncomingCallViewModel";
-
-      static String com_kchat_core_navigation_viewmodel_InChatSearchViewModel = "com.kchat.core.navigation.viewmodel.InChatSearchViewModel";
-
-      static String com_kchat_core_navigation_viewmodel_GroupInfoViewModel = "com.kchat.core.navigation.viewmodel.GroupInfoViewModel";
-
-      static String com_kchat_core_navigation_viewmodel_SettingsViewModel = "com.kchat.core.navigation.viewmodel.SettingsViewModel";
-
-      static String com_kchat_core_navigation_viewmodel_CallViewModel = "com.kchat.core.navigation.viewmodel.CallViewModel";
-
-      static String com_kchat_core_navigation_viewmodel_ForgotPasswordViewModel = "com.kchat.core.navigation.viewmodel.ForgotPasswordViewModel";
-
-      static String com_kchat_core_navigation_viewmodel_PinLockViewModel = "com.kchat.core.navigation.viewmodel.PinLockViewModel";
-
-      static String com_kchat_core_navigation_viewmodel_SessionViewModel = "com.kchat.core.navigation.viewmodel.SessionViewModel";
-
-      static String com_kchat_core_navigation_viewmodel_PinSettingsViewModel = "com.kchat.core.navigation.viewmodel.PinSettingsViewModel";
+      static String com_kchat_core_navigation_viewmodel_ChatListViewModel = "com.kchat.core.navigation.viewmodel.ChatListViewModel";
 
       static String com_kchat_core_navigation_viewmodel_CreateGroupViewModel = "com.kchat.core.navigation.viewmodel.CreateGroupViewModel";
 
+      static String com_kchat_core_navigation_viewmodel_ForgotPasswordViewModel = "com.kchat.core.navigation.viewmodel.ForgotPasswordViewModel";
+
       static String com_kchat_core_navigation_viewmodel_VerifyResetOtpViewModel = "com.kchat.core.navigation.viewmodel.VerifyResetOtpViewModel";
+
+      static String com_kchat_core_navigation_viewmodel_RegisterViewModel = "com.kchat.core.navigation.viewmodel.RegisterViewModel";
+
+      static String com_kchat_core_navigation_viewmodel_SessionViewModel = "com.kchat.core.navigation.viewmodel.SessionViewModel";
 
       static String com_kchat_core_navigation_viewmodel_ContactsViewModel = "com.kchat.core.navigation.viewmodel.ContactsViewModel";
 
-      static String com_kchat_core_navigation_viewmodel_ChatListViewModel = "com.kchat.core.navigation.viewmodel.ChatListViewModel";
+      static String com_kchat_core_navigation_viewmodel_InChatSearchViewModel = "com.kchat.core.navigation.viewmodel.InChatSearchViewModel";
+
+      static String com_kchat_core_navigation_viewmodel_IncomingCallViewModel = "com.kchat.core.navigation.viewmodel.IncomingCallViewModel";
+
+      static String com_kchat_core_navigation_viewmodel_GroupInfoViewModel = "com.kchat.core.navigation.viewmodel.GroupInfoViewModel";
+
+      static String com_kchat_core_navigation_viewmodel_CallViewModel = "com.kchat.core.navigation.viewmodel.CallViewModel";
+
+      static String com_kchat_core_navigation_viewmodel_ResetPasswordViewModel = "com.kchat.core.navigation.viewmodel.ResetPasswordViewModel";
+
+      static String com_kchat_core_navigation_viewmodel_PinSettingsViewModel = "com.kchat.core.navigation.viewmodel.PinSettingsViewModel";
+
+      static String com_kchat_core_navigation_viewmodel_SettingsViewModel = "com.kchat.core.navigation.viewmodel.SettingsViewModel";
+
+      static String com_kchat_core_navigation_viewmodel_PinLockViewModel = "com.kchat.core.navigation.viewmodel.PinLockViewModel";
 
       static String com_kchat_core_navigation_viewmodel_LoginViewModel = "com.kchat.core.navigation.viewmodel.LoginViewModel";
 
-      static String com_kchat_core_navigation_viewmodel_ChatRoomViewModel = "com.kchat.core.navigation.viewmodel.ChatRoomViewModel";
-
       static String com_kchat_core_navigation_viewmodel_DevicesViewModel = "com.kchat.core.navigation.viewmodel.DevicesViewModel";
 
-      @KeepFieldType
-      ResetPasswordViewModel com_kchat_core_navigation_viewmodel_ResetPasswordViewModel2;
-
-      @KeepFieldType
-      RegisterViewModel com_kchat_core_navigation_viewmodel_RegisterViewModel2;
-
-      @KeepFieldType
-      IncomingCallViewModel com_kchat_core_navigation_viewmodel_IncomingCallViewModel2;
-
-      @KeepFieldType
-      InChatSearchViewModel com_kchat_core_navigation_viewmodel_InChatSearchViewModel2;
-
-      @KeepFieldType
-      GroupInfoViewModel com_kchat_core_navigation_viewmodel_GroupInfoViewModel2;
-
-      @KeepFieldType
-      SettingsViewModel com_kchat_core_navigation_viewmodel_SettingsViewModel2;
-
-      @KeepFieldType
-      CallViewModel com_kchat_core_navigation_viewmodel_CallViewModel2;
-
-      @KeepFieldType
-      ForgotPasswordViewModel com_kchat_core_navigation_viewmodel_ForgotPasswordViewModel2;
-
-      @KeepFieldType
-      PinLockViewModel com_kchat_core_navigation_viewmodel_PinLockViewModel2;
-
-      @KeepFieldType
-      SessionViewModel com_kchat_core_navigation_viewmodel_SessionViewModel2;
-
-      @KeepFieldType
-      PinSettingsViewModel com_kchat_core_navigation_viewmodel_PinSettingsViewModel2;
-
-      @KeepFieldType
-      CreateGroupViewModel com_kchat_core_navigation_viewmodel_CreateGroupViewModel2;
-
-      @KeepFieldType
-      VerifyResetOtpViewModel com_kchat_core_navigation_viewmodel_VerifyResetOtpViewModel2;
-
-      @KeepFieldType
-      ContactsViewModel com_kchat_core_navigation_viewmodel_ContactsViewModel2;
+      static String com_kchat_core_navigation_viewmodel_ChatRoomViewModel = "com.kchat.core.navigation.viewmodel.ChatRoomViewModel";
 
       @KeepFieldType
       ChatListViewModel com_kchat_core_navigation_viewmodel_ChatListViewModel2;
 
       @KeepFieldType
+      CreateGroupViewModel com_kchat_core_navigation_viewmodel_CreateGroupViewModel2;
+
+      @KeepFieldType
+      ForgotPasswordViewModel com_kchat_core_navigation_viewmodel_ForgotPasswordViewModel2;
+
+      @KeepFieldType
+      VerifyResetOtpViewModel com_kchat_core_navigation_viewmodel_VerifyResetOtpViewModel2;
+
+      @KeepFieldType
+      RegisterViewModel com_kchat_core_navigation_viewmodel_RegisterViewModel2;
+
+      @KeepFieldType
+      SessionViewModel com_kchat_core_navigation_viewmodel_SessionViewModel2;
+
+      @KeepFieldType
+      ContactsViewModel com_kchat_core_navigation_viewmodel_ContactsViewModel2;
+
+      @KeepFieldType
+      InChatSearchViewModel com_kchat_core_navigation_viewmodel_InChatSearchViewModel2;
+
+      @KeepFieldType
+      IncomingCallViewModel com_kchat_core_navigation_viewmodel_IncomingCallViewModel2;
+
+      @KeepFieldType
+      GroupInfoViewModel com_kchat_core_navigation_viewmodel_GroupInfoViewModel2;
+
+      @KeepFieldType
+      CallViewModel com_kchat_core_navigation_viewmodel_CallViewModel2;
+
+      @KeepFieldType
+      ResetPasswordViewModel com_kchat_core_navigation_viewmodel_ResetPasswordViewModel2;
+
+      @KeepFieldType
+      PinSettingsViewModel com_kchat_core_navigation_viewmodel_PinSettingsViewModel2;
+
+      @KeepFieldType
+      SettingsViewModel com_kchat_core_navigation_viewmodel_SettingsViewModel2;
+
+      @KeepFieldType
+      PinLockViewModel com_kchat_core_navigation_viewmodel_PinLockViewModel2;
+
+      @KeepFieldType
       LoginViewModel com_kchat_core_navigation_viewmodel_LoginViewModel2;
 
       @KeepFieldType
-      ChatRoomViewModel com_kchat_core_navigation_viewmodel_ChatRoomViewModel2;
+      DevicesViewModel com_kchat_core_navigation_viewmodel_DevicesViewModel2;
 
       @KeepFieldType
-      DevicesViewModel com_kchat_core_navigation_viewmodel_DevicesViewModel2;
+      ChatRoomViewModel com_kchat_core_navigation_viewmodel_ChatRoomViewModel2;
     }
 
     private static final class SwitchingProvider<T> implements Provider<T> {

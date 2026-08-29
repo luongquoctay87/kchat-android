@@ -3,12 +3,15 @@ package com.kchat.core.ui.call
 import android.content.Context
 import android.media.AudioManager
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import com.kchat.core.model.RtcIceServer
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import org.webrtc.AudioSource
 import org.webrtc.AudioTrack
+import org.webrtc.Camera1Enumerator
 import org.webrtc.Camera2Enumerator
 import org.webrtc.CameraEnumerator
 import org.webrtc.DataChannel
@@ -50,6 +53,7 @@ class WebRtcSession(
     private val executor = Executors.newSingleThreadExecutor { r ->
         Thread(r, "kchat-webrtc").apply { isDaemon = true }
     }
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     private var eglBase: EglBase? = null
     private var factory: PeerConnectionFactory? = null
@@ -250,10 +254,13 @@ class WebRtcSession(
     fun setCameraEnabled(enabled: Boolean) {
         runOnPc {
             videoTrack?.setEnabled(enabled)
+            val capturer = videoCapturer ?: return@runOnPc
             if (enabled) {
-                runCatching { videoCapturer?.startCapture(640, 480, 24) }
+                if (!startCaptureWithFallback(capturer)) {
+                    Log.e(TAG, "setCameraEnabled: startCapture failed")
+                }
             } else {
-                runCatching { videoCapturer?.stopCapture() }
+                runCatching { capturer.stopCapture() }
             }
         }
     }
@@ -266,39 +273,48 @@ class WebRtcSession(
     }
 
     fun attachLocalRenderer(renderer: SurfaceViewRenderer) {
-        runOnPc {
-            val egl = eglBase ?: return@runOnPc
-            localRenderer?.let { detachLocal(it) }
-            localRenderer = renderer
+        val egl = eglBase ?: return
+        mainHandler.post {
+            if (disposed.get()) return@post
             runCatching {
                 renderer.init(egl.eglBaseContext, null)
                 renderer.setMirror(true)
                 renderer.setEnableHardwareScaler(true)
+                renderer.setZOrderMediaOverlay(true)
+            }.onFailure { Log.e(TAG, "local renderer init failed", it) }
+            runOnPc {
+                localRenderer?.let { detachLocal(it, releaseView = false) }
+                localRenderer = renderer
+                videoTrack?.addSink(renderer)
             }
-            videoTrack?.addSink(renderer)
         }
     }
 
     fun attachRemoteRenderer(renderer: SurfaceViewRenderer) {
-        runOnPc {
-            val egl = eglBase ?: return@runOnPc
-            remoteRenderer?.let { detachRemote(it) }
-            remoteRenderer = renderer
+        val egl = eglBase ?: return
+        mainHandler.post {
+            if (disposed.get()) return@post
             runCatching {
                 renderer.init(egl.eglBaseContext, null)
                 renderer.setMirror(false)
                 renderer.setEnableHardwareScaler(true)
+            }.onFailure { Log.e(TAG, "remote renderer init failed", it) }
+            runOnPc {
+                remoteRenderer?.let { detachRemote(it, releaseView = false) }
+                remoteRenderer = renderer
+                remoteVideoTrack?.addSink(renderer)
             }
-            remoteVideoTrack?.addSink(renderer)
         }
     }
 
     fun detachRenderers() {
         runOnPc {
-            localRenderer?.let { videoTrack?.removeSink(it) }
-            remoteRenderer?.let { remoteVideoTrack?.removeSink(it) }
+            val local = localRenderer
+            val remote = remoteRenderer
             localRenderer = null
             remoteRenderer = null
+            detachLocal(local, releaseView = true)
+            detachRemote(remote, releaseView = true)
         }
     }
 
@@ -326,8 +342,8 @@ class WebRtcSession(
     }
 
     private fun cleanupResources() {
-        detachLocal(localRenderer)
-        detachRemote(remoteRenderer)
+        detachLocal(localRenderer, releaseView = true)
+        detachRemote(remoteRenderer, releaseView = true)
         localRenderer = null
         remoteRenderer = null
         remoteVideoTrack = null
@@ -383,7 +399,8 @@ class WebRtcSession(
         }
         if (factory == null) {
             val egl = eglBase!!
-            val encoder = DefaultVideoEncoderFactory(egl.eglBaseContext, true, true)
+            // disable H264 high profile — flaky on some OEM devices
+            val encoder = DefaultVideoEncoderFactory(egl.eglBaseContext, true, false)
             val decoder = DefaultVideoDecoderFactory(egl.eglBaseContext)
             factory = PeerConnectionFactory.builder()
                 .setVideoEncoderFactory(encoder)
@@ -534,8 +551,7 @@ class WebRtcSession(
 
         if (!isVideo) return
 
-        val enumerator: CameraEnumerator = Camera2Enumerator(appContext)
-        val capturer = createCameraCapturer(enumerator)
+        val capturer = createCameraCapturer()
         if (capturer == null) {
             Log.w(TAG, "No camera — video call will be audio-only receive")
             return
@@ -544,13 +560,62 @@ class WebRtcSession(
         surfaceTextureHelper = SurfaceTextureHelper.create("kchat-capture", eglBase!!.eglBaseContext)
         videoSource = f.createVideoSource(capturer.isScreencast)
         capturer.initialize(surfaceTextureHelper, appContext, videoSource!!.capturerObserver)
-        runCatching { capturer.startCapture(640, 480, 24) }
-            .onFailure { Log.e(TAG, "startCapture failed", it) }
+        if (!startCaptureWithFallback(capturer)) {
+            Log.e(TAG, "startCapture failed on all resolutions")
+            runCatching { capturer.stopCapture() }
+            capturer.dispose()
+            videoCapturer = null
+            surfaceTextureHelper?.dispose()
+            surfaceTextureHelper = null
+            videoSource?.dispose()
+            videoSource = null
+            return
+        }
         videoTrack = f.createVideoTrack(VIDEO_TRACK_ID, videoSource).also { track ->
             track.setEnabled(true)
             pc.addTrack(track, listOf(STREAM_ID))
             localRenderer?.let { track.addSink(it) }
         }
+        Log.i(TAG, "local video track ready")
+    }
+
+    private fun createCameraCapturer(): VideoCapturer? {
+        val enumerator = preferredCameraEnumerator()
+        createCameraCapturer(enumerator)?.let { return it }
+        // Fallback path when Camera2 fails on some OEM devices.
+        if (enumerator !is Camera1Enumerator) {
+            return createCameraCapturer(Camera1Enumerator(true))
+        }
+        return null
+    }
+
+    private fun preferredCameraEnumerator(): CameraEnumerator {
+        return if (Camera2Enumerator.isSupported(appContext)) {
+            Camera2Enumerator(appContext)
+        } else {
+            Camera1Enumerator(true)
+        }
+    }
+
+    private fun startCaptureWithFallback(capturer: VideoCapturer): Boolean {
+        val sizes = listOf(
+            intArrayOf(1280, 720),
+            intArrayOf(640, 480),
+            intArrayOf(480, 360),
+            intArrayOf(320, 240),
+        )
+        for ((w, h) in sizes) {
+            val ok = runCatching {
+                capturer.startCapture(w, h, 24)
+            }.isSuccess
+            if (ok) {
+                Log.i(TAG, "camera capture ${w}x$h@24")
+                return true
+            }
+            Log.w(TAG, "camera capture failed at ${w}x$h")
+            runCatching { capturer.stopCapture() }
+        }
+        return false
     }
 
     private fun createCameraCapturer(enumerator: CameraEnumerator): VideoCapturer? {
@@ -579,14 +644,20 @@ class WebRtcSession(
         pendingRemoteIce.clear()
     }
 
-    private fun detachLocal(renderer: SurfaceViewRenderer?) {
+    private fun detachLocal(renderer: SurfaceViewRenderer?, releaseView: Boolean) {
         if (renderer == null) return
         videoTrack?.removeSink(renderer)
+        if (releaseView) {
+            mainHandler.post { runCatching { renderer.release() } }
+        }
     }
 
-    private fun detachRemote(renderer: SurfaceViewRenderer?) {
+    private fun detachRemote(renderer: SurfaceViewRenderer?, releaseView: Boolean) {
         if (renderer == null) return
         remoteVideoTrack?.removeSink(renderer)
+        if (releaseView) {
+            mainHandler.post { runCatching { renderer.release() } }
+        }
     }
 
     private fun runOnPc(block: () -> Unit) {
