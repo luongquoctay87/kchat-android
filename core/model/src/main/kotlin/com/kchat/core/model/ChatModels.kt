@@ -147,6 +147,9 @@ data class ContactSummary(
     val isOnline: Boolean,
     val email: String = "",
     val avatarUrl: String? = null,
+    val isContact: Boolean = false,
+    val username: String = "",
+    val phone: String = "",
 )
 
 data class ChatMessage(
@@ -193,6 +196,7 @@ data class RoomSummary(
     val myRole: String? = null,
     val isMuted: Boolean = false,
     val mutedUntilEpochMs: Long? = null,
+    val avatarUrl: String? = null,
 )
 
 /** Mute durations for [ChatRepository.muteRoom] — must match backend [RoomMuteOptions]. */

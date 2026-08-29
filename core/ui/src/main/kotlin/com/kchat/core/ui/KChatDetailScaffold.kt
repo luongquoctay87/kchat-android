@@ -3,6 +3,7 @@ package com.kchat.core.ui
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -47,6 +48,7 @@ fun KChatDetailScaffold(
     Scaffold(
         modifier = modifier.statusBarsPadding(),
         containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             KChatTopBar(
                 title = title,
@@ -79,6 +81,7 @@ fun KChatAuthScaffold(
                 })
             },
         containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             if (title != null) {
                 KChatTopBar(

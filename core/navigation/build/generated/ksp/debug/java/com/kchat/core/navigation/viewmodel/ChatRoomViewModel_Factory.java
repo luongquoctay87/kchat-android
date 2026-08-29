@@ -3,6 +3,7 @@ package com.kchat.core.navigation.viewmodel;
 import androidx.lifecycle.SavedStateHandle;
 import com.kchat.data.repository.ActiveRoomTracker;
 import com.kchat.data.repository.ChatRepository;
+import com.kchat.data.repository.ContactsRepository;
 import com.kchat.data.repository.RealtimeCoordinator;
 import dagger.internal.DaggerGenerated;
 import dagger.internal.Factory;
@@ -31,36 +32,41 @@ public final class ChatRoomViewModel_Factory implements Factory<ChatRoomViewMode
 
   private final Provider<ChatRepository> chatRepositoryProvider;
 
+  private final Provider<ContactsRepository> contactsRepositoryProvider;
+
   private final Provider<ActiveRoomTracker> activeRoomTrackerProvider;
 
   private final Provider<RealtimeCoordinator> realtimeCoordinatorProvider;
 
   public ChatRoomViewModel_Factory(Provider<SavedStateHandle> savedStateHandleProvider,
       Provider<ChatRepository> chatRepositoryProvider,
+      Provider<ContactsRepository> contactsRepositoryProvider,
       Provider<ActiveRoomTracker> activeRoomTrackerProvider,
       Provider<RealtimeCoordinator> realtimeCoordinatorProvider) {
     this.savedStateHandleProvider = savedStateHandleProvider;
     this.chatRepositoryProvider = chatRepositoryProvider;
+    this.contactsRepositoryProvider = contactsRepositoryProvider;
     this.activeRoomTrackerProvider = activeRoomTrackerProvider;
     this.realtimeCoordinatorProvider = realtimeCoordinatorProvider;
   }
 
   @Override
   public ChatRoomViewModel get() {
-    return newInstance(savedStateHandleProvider.get(), chatRepositoryProvider.get(), activeRoomTrackerProvider.get(), realtimeCoordinatorProvider.get());
+    return newInstance(savedStateHandleProvider.get(), chatRepositoryProvider.get(), contactsRepositoryProvider.get(), activeRoomTrackerProvider.get(), realtimeCoordinatorProvider.get());
   }
 
   public static ChatRoomViewModel_Factory create(
       Provider<SavedStateHandle> savedStateHandleProvider,
       Provider<ChatRepository> chatRepositoryProvider,
+      Provider<ContactsRepository> contactsRepositoryProvider,
       Provider<ActiveRoomTracker> activeRoomTrackerProvider,
       Provider<RealtimeCoordinator> realtimeCoordinatorProvider) {
-    return new ChatRoomViewModel_Factory(savedStateHandleProvider, chatRepositoryProvider, activeRoomTrackerProvider, realtimeCoordinatorProvider);
+    return new ChatRoomViewModel_Factory(savedStateHandleProvider, chatRepositoryProvider, contactsRepositoryProvider, activeRoomTrackerProvider, realtimeCoordinatorProvider);
   }
 
   public static ChatRoomViewModel newInstance(SavedStateHandle savedStateHandle,
-      ChatRepository chatRepository, ActiveRoomTracker activeRoomTracker,
-      RealtimeCoordinator realtimeCoordinator) {
-    return new ChatRoomViewModel(savedStateHandle, chatRepository, activeRoomTracker, realtimeCoordinator);
+      ChatRepository chatRepository, ContactsRepository contactsRepository,
+      ActiveRoomTracker activeRoomTracker, RealtimeCoordinator realtimeCoordinator) {
+    return new ChatRoomViewModel(savedStateHandle, chatRepository, contactsRepository, activeRoomTracker, realtimeCoordinator);
   }
 }

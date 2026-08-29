@@ -1,0 +1,1 @@
+int drawable kchat_logo 0x0

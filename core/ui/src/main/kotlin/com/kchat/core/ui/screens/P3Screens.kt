@@ -62,8 +62,10 @@ import com.kchat.core.design.KChatColors
 import com.kchat.core.design.KChatDimens
 import com.kchat.core.model.SearchResult
 import com.kchat.core.ui.KChatDetailScaffold
+import com.kchat.core.ui.LocalTransientAppLeave
 import com.kchat.core.ui.components.KChatSearchField
 import com.kchat.core.ui.components.UserAvatar
+import com.kchat.core.ui.runWithoutLock
 import org.webrtc.SurfaceViewRenderer
 
 @Composable
@@ -172,6 +174,7 @@ fun CallScreen(
     val context = LocalContext.current
     var mediaReadyFired by remember { mutableStateOf(false) }
     var pendingAccept by remember { mutableStateOf(false) }
+    val transientLeave = LocalTransientAppLeave.current
 
     fun requiredPermissions(): Array<String> =
         if (isVideo) {
@@ -188,6 +191,7 @@ fun CallScreen(
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
     ) { grants ->
+        transientLeave?.end()
         val ok = grants.values.all { it }
         if (ok) {
             if (!mediaReadyFired) {
@@ -208,7 +212,9 @@ fun CallScreen(
         if (hasAllPermissions()) {
             onGranted()
         } else {
-            permissionLauncher.launch(requiredPermissions())
+            transientLeave.runWithoutLock {
+                permissionLauncher.launch(requiredPermissions())
+            }
         }
     }
 

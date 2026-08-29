@@ -35,11 +35,11 @@ interface ChatRepository {
 
     fun pinnedMessage(roomId: String): String?
 
-    suspend fun getPinnedMessage(roomId: String): Result<PinnedMessage?>
+    suspend fun getPinnedMessages(roomId: String): Result<List<PinnedMessage>>
 
     suspend fun pinMessage(roomId: String, messageId: String): Result<PinnedMessage>
 
-    suspend fun unpinMessage(roomId: String): Result<Unit>
+    suspend fun unpinMessage(roomId: String, messageId: String): Result<Unit>
 
     fun mentionUsers(query: String): List<MentionUser>
 
@@ -67,6 +67,13 @@ interface ChatRepository {
     suspend fun removeMember(roomId: String, userId: String): Result<Unit>
 
     suspend fun leaveRoom(roomId: String): Result<Unit>
+
+    suspend fun updateGroupAvatar(
+        roomId: String,
+        uri: android.net.Uri,
+        mimeType: String?,
+        displayName: String?,
+    ): Result<RoomSummary>
 
     /**
      * Per-room disappearing messages. Pass null or 0 to turn off.

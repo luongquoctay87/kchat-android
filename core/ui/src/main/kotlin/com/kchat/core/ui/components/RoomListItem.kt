@@ -40,6 +40,7 @@ fun RoomListItem(
     ) {
         UserAvatar(
             name = if (room.isChannel) "#" else room.title,
+            imageUrl = room.avatarUrl,
             isOnline = room.isOnline && !room.isChannel,
             backgroundColor = if (room.isChannel) {
                 MaterialTheme.colorScheme.secondaryContainer

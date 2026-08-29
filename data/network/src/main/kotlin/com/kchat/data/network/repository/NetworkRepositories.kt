@@ -300,16 +300,10 @@ class NetworkChatRepository @Inject constructor(
 
     override fun pinnedMessage(roomId: String): String? = null
 
-    override suspend fun getPinnedMessage(roomId: String): Result<com.kchat.core.model.PinnedMessage?> = apiResult("Không tải được tin ghim") {
-        val response = api.getPinned(roomId)
-        when {
-            response.code() == 204 -> null
-            response.isSuccessful -> response.body()?.let {
-                com.kchat.core.model.PinnedMessage(it.messageId, it.text)
-            }
-            else -> error("Không tải được tin ghim")
+    override suspend fun getPinnedMessages(roomId: String): Result<List<com.kchat.core.model.PinnedMessage>> =
+        apiResult("Không tải được tin ghim") {
+            api.getPinned(roomId).map { com.kchat.core.model.PinnedMessage(it.messageId, it.text) }
         }
-    }
 
     override suspend fun pinMessage(roomId: String, messageId: String): Result<com.kchat.core.model.PinnedMessage> =
         apiResult("Không ghim được tin nhắn") {
@@ -317,9 +311,10 @@ class NetworkChatRepository @Inject constructor(
             com.kchat.core.model.PinnedMessage(dto.messageId, dto.text)
         }
 
-    override suspend fun unpinMessage(roomId: String): Result<Unit> = apiResult("Không bỏ ghim được") {
-        api.unpinMessage(roomId)
-    }
+    override suspend fun unpinMessage(roomId: String, messageId: String): Result<Unit> =
+        apiResult("Không bỏ ghim được") {
+            api.unpinMessage(roomId, messageId)
+        }
 
     override fun mentionUsers(query: String): List<MentionUser> = emptyList()
 
@@ -335,7 +330,7 @@ class NetworkChatRepository @Inject constructor(
     override suspend fun refreshRooms() {
         if (emergencyWipeStore.isActiveNow()) return
         try {
-            val rooms = api.getRooms().map { it.toModel() }
+            val rooms = api.getRooms().map { it.toModel().withAbsoluteAvatarUrl(apiBaseUrl) }
             localDataSource.cacheRooms(rooms)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
@@ -389,7 +384,7 @@ class NetworkChatRepository @Inject constructor(
 
     override suspend fun createGroup(name: String, memberIds: List<String>): Result<RoomSummary> = apiResult("Tạo nhóm thất bại") {
         val dto = api.createGroup(CreateGroupRequest(name = name.trim(), memberIds = memberIds))
-        val room = dto.toModel()
+        val room = dto.toModel().withAbsoluteAvatarUrl(apiBaseUrl)
         refreshRooms()
         room
     }
@@ -413,6 +408,29 @@ class NetworkChatRepository @Inject constructor(
         refreshRooms()
     }
 
+    override suspend fun updateGroupAvatar(
+        roomId: String,
+        uri: android.net.Uri,
+        mimeType: String?,
+        displayName: String?,
+    ): Result<RoomSummary> = apiResult("Cập nhật ảnh nhóm thất bại") {
+        val resolver = context.contentResolver
+        val type = MediaUploadHelper.resolveMime(resolver, uri, mimeType)
+        if (!MediaUploadHelper.isAllowedAvatarMime(type)) {
+            error("Chỉ hỗ trợ ảnh JPEG, PNG, WebP hoặc GIF")
+        }
+        val name = MediaUploadHelper.resolveDisplayName(resolver, uri, displayName)
+        val length = MediaUploadHelper.contentLength(resolver, uri)
+        if (length > MediaUploadHelper.AVATAR_MAX_BYTES) {
+            error("Ảnh đại diện tối đa 5MB")
+        }
+        val body = MediaUploadHelper.requestBody(context, uri, type, length.coerceAtLeast(-1L))
+        val part = okhttp3.MultipartBody.Part.createFormData("file", name, body)
+        val room = api.updateGroupAvatar(roomId, part).toModel().withAbsoluteAvatarUrl(apiBaseUrl)
+        localDataSource.upsertRoom(room)
+        room
+    }
+
     override suspend fun updateRoomDisappearing(
         roomId: String,
         disappearingAfterSeconds: Int?,
@@ -421,15 +439,23 @@ class NetworkChatRepository @Inject constructor(
         val updated = api.updateRoom(
             roomId,
             UpdateRoomRequest(disappearingAfterSeconds = seconds),
-        ).toModel()
+        ).toModel().withAbsoluteAvatarUrl(apiBaseUrl)
         localDataSource.upsertRoom(updated)
     }
 
     override suspend fun muteRoom(roomId: String, durationSeconds: Int): Result<Unit> =
         apiResult("Không lưu được tắt thông báo") {
-            val updated = api.muteRoom(roomId, MuteRoomRequest(durationSeconds = durationSeconds)).toModel()
+            val updated = api.muteRoom(roomId, MuteRoomRequest(durationSeconds = durationSeconds))
+                .toModel()
+                .withAbsoluteAvatarUrl(apiBaseUrl)
             localDataSource.upsertRoom(updated)
         }
+}
+
+private fun RoomSummary.withAbsoluteAvatarUrl(baseUrl: String): RoomSummary {
+    val relative = avatarUrl ?: return this
+    if (relative.startsWith("http://") || relative.startsWith("https://")) return this
+    return copy(avatarUrl = baseUrl.trimEnd('/') + relative)
 }
 
 private fun ChatMessage.withAbsoluteMediaUrl(baseUrl: String): ChatMessage {

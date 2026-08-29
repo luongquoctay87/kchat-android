@@ -43,6 +43,7 @@ import com.kchat.core.ui.components.MockNotificationBanner
 import com.kchat.core.ui.components.SheetCancelRow
 import com.kchat.core.ui.components.SheetHandle
 import com.kchat.core.ui.components.SheetOptionRow
+import com.kchat.core.model.ContactSummary
 import com.kchat.core.model.RoomSummary
 import com.kchat.core.navigation.viewmodel.CallViewModel
 import com.kchat.core.navigation.viewmodel.ChatListViewModel
@@ -67,6 +68,7 @@ import com.kchat.core.navigation.settings.toQuietHours
 import com.kchat.core.navigation.viewmodel.SettingsViewModel
 import com.kchat.core.ui.screens.ChatListScreen
 import com.kchat.core.ui.screens.ChatRoomScreen
+import com.kchat.core.ui.screens.ContactDetailScreen
 import com.kchat.core.ui.screens.ContactsScreen
 import com.kchat.core.ui.screens.CreateGroupScreen
 import com.kchat.core.ui.screens.GroupInfoScreen
@@ -327,6 +329,8 @@ fun KChatNavHost(
             val pinned by viewModel.pinned.collectAsStateWithLifecycle()
             val readReceipts by viewModel.readReceipts.collectAsStateWithLifecycle()
             val actionError by viewModel.actionError.collectAsStateWithLifecycle()
+            val infoMessage by viewModel.infoMessage.collectAsStateWithLifecycle()
+            val canAddPeerToContacts by viewModel.canAddPeerToContacts.collectAsStateWithLifecycle()
             val restoreDraft by viewModel.restoreDraft.collectAsStateWithLifecycle()
             val restoreReply by viewModel.restoreReply.collectAsStateWithLifecycle()
             val scrollToMessageId by entry.savedStateHandle
@@ -340,14 +344,19 @@ fun KChatNavHost(
                     viewModel.clearActionError()
                 }
             }
+            LaunchedEffect(infoMessage) {
+                infoMessage?.let { message ->
+                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                    viewModel.clearInfoMessage()
+                }
+            }
             ChatRoomScreen(
                 roomId = route.roomId,
                 roomTitle = route.title,
                 enterToSend = appearance.enterToSend,
                 roomMeta = roomMeta,
                 messages = messages,
-                pinnedMessage = pinned?.text,
-                pinnedMessageId = pinned?.messageId,
+                pinnedMessages = pinned,
                 scrollToMessageId = scrollToMessageId,
                 onScrollToMessageConsumed = {
                     entry.savedStateHandle.remove<String>("scrollToMessageId")
@@ -420,6 +429,8 @@ fun KChatNavHost(
                 },
                 onDisappearingChange = viewModel::setDisappearing,
                 onMuteChange = viewModel::setRoomMuted,
+                canAddPeerToContacts = canAddPeerToContacts,
+                onAddPeerToContacts = viewModel::addPeerToContacts,
                 onOpenCall = { type ->
                     navController.navigate(
                         KChatRoute.Call(
@@ -456,13 +467,19 @@ fun KChatNavHost(
             val viewModel: GroupInfoViewModel = hiltViewModel()
             val members by viewModel.members.collectAsStateWithLifecycle()
             val contacts by viewModel.contacts.collectAsStateWithLifecycle()
+            val room by viewModel.room.collectAsStateWithLifecycle()
             val loading by viewModel.loading.collectAsStateWithLifecycle()
             val busy by viewModel.busy.collectAsStateWithLifecycle()
+            val avatarUploading by viewModel.avatarUploading.collectAsStateWithLifecycle()
             val error by viewModel.error.collectAsStateWithLifecycle()
             GroupInfoScreen(
-                groupName = route.title.ifBlank { viewModel.title }.ifBlank {
-                    if (route.isChannel) "Kênh" else "Nhóm"
-                },
+                groupName = room?.title
+                    ?: route.title.ifBlank { viewModel.title }.ifBlank {
+                        if (route.isChannel) "Kênh" else "Nhóm"
+                    },
+                avatarUrl = room?.avatarUrl,
+                avatarUploading = avatarUploading,
+                myRole = room?.myRole,
                 members = members,
                 contacts = contacts,
                 loading = loading,
@@ -472,6 +489,11 @@ fun KChatNavHost(
                 onBack = { navController.popBackStack() },
                 onAddMembers = { ids -> viewModel.addMembers(ids) },
                 onRemoveMember = { userId -> viewModel.removeMember(userId) },
+                onChangeAvatar = if (route.isChannel) {
+                    null
+                } else {
+                    { uri, mime, name -> viewModel.updateAvatar(uri, mime, name) }
+                },
                 onLeave = { viewModel.leave() },
                 onLeft = {
                     navController.popBackStack(KChatRoute.Main, inclusive = false)
@@ -499,6 +521,52 @@ fun KChatNavHost(
                 },
                 onBack = { navController.popBackStack() },
                 onChangePassword = { navController.navigate(KChatRoute.ChangePassword) },
+            )
+        }
+        composable<KChatRoute.ContactDetail> { entry ->
+            val route = entry.toRoute<KChatRoute.ContactDetail>()
+            val contact = ContactSummary(
+                id = route.id,
+                name = route.name,
+                subtitle = route.subtitle,
+                isOnline = route.isOnline,
+                email = route.email,
+                avatarUrl = route.avatarUrl,
+                isContact = route.isContact,
+                username = route.username,
+                phone = route.phone,
+            )
+            val contactsViewModel: ContactsViewModel = hiltViewModel()
+            val context = LocalContext.current
+            val scope = rememberCoroutineScope()
+            ContactDetailScreen(
+                contact = contact,
+                onBack = { navController.popBackStack() },
+                onMessage = {
+                    scope.launch {
+                        contactsViewModel.openDirectChat(contact.id)
+                            .onSuccess { roomId ->
+                                navController.navigate(KChatRoute.Chat(roomId, contact.name)) {
+                                    popUpTo(KChatRoute.Main) { inclusive = false }
+                                }
+                            }
+                            .onFailure { error ->
+                                Toast.makeText(
+                                    context,
+                                    error.message ?: "Không mở được chat riêng",
+                                    Toast.LENGTH_LONG,
+                                ).show()
+                            }
+                    }
+                },
+                onRemove = if (contact.isContact) {
+                    {
+                        contactsViewModel.removeContact(contact.id)
+                        navController.popBackStack()
+                    }
+                } else {
+                    null
+                },
             )
         }
         composable<KChatRoute.ChangePassword> {
@@ -804,8 +872,15 @@ private fun MainTabsScreen(
                     KChatTab.Contacts -> {
                         val contactsViewModel: ContactsViewModel = hiltViewModel()
                         val contacts by contactsViewModel.contacts.collectAsStateWithLifecycle()
+                        val contactsUi by contactsViewModel.uiState.collectAsStateWithLifecycle()
                         ContactsScreen(
                             contacts = contacts,
+                            query = contactsUi.query,
+                            onQueryChange = contactsViewModel::onQueryChange,
+                            searchResults = contactsUi.searchResults,
+                            isSearching = contactsUi.isSearching,
+                            searchError = contactsUi.searchError,
+                            actionError = contactsUi.actionError,
                             onContactClick = { contact ->
                                 scope.launch {
                                     contactsViewModel.openDirectChat(contact.id)
@@ -820,6 +895,27 @@ private fun MainTabsScreen(
                                             ).show()
                                         }
                                 }
+                            },
+                            onAddContact = { contact ->
+                                contactsViewModel.addContact(contact.id)
+                            },
+                            onRemoveContact = { contact ->
+                                contactsViewModel.removeContact(contact.id)
+                            },
+                            onViewContactDetail = { contact ->
+                                navController.navigate(
+                                    KChatRoute.ContactDetail(
+                                        id = contact.id,
+                                        name = contact.name,
+                                        subtitle = contact.subtitle,
+                                        isOnline = contact.isOnline,
+                                        email = contact.email,
+                                        avatarUrl = contact.avatarUrl,
+                                        username = contact.username,
+                                        phone = contact.phone,
+                                        isContact = true,
+                                    ),
+                                )
                             },
                             modifier = Modifier.fillMaxSize(),
                         )

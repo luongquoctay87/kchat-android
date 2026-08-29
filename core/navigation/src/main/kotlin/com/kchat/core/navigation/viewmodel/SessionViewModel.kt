@@ -1,18 +1,18 @@
 package com.kchat.core.navigation.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.kchat.data.repository.ActiveRoomTracker
 import com.kchat.data.repository.AppForegroundTracker
 import com.kchat.data.repository.AuthRepository
 import com.kchat.data.repository.PinLockStore
+import com.kchat.data.repository.PinLockTransientLeave
 import com.kchat.data.repository.RealtimeCoordinator
 import com.kchat.data.repository.SessionCoordinator
 import com.kchat.data.repository.TokenStore
-import com.kchat.data.repository.ActiveRoomTracker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -34,6 +34,7 @@ class SessionViewModel @Inject constructor(
     private val sessionCoordinator: SessionCoordinator,
     private val realtimeCoordinator: RealtimeCoordinator,
     private val pinLockStore: PinLockStore,
+    private val pinLockTransientLeave: PinLockTransientLeave,
     private val appForegroundTracker: AppForegroundTracker,
     private val activeRoomTracker: ActiveRoomTracker,
 ) : ViewModel() {
@@ -48,8 +49,6 @@ class SessionViewModel @Inject constructor(
             else -> SessionGate.Main
         }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, SessionGate.Loading)
-
-    private var backgroundLockJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -76,17 +75,16 @@ class SessionViewModel @Inject constructor(
     fun onAppBackgrounded() {
         appForegroundTracker.onBackground()
         activeRoomTracker.clear()
-        backgroundLockJob?.cancel()
-        backgroundLockJob = viewModelScope.launch {
-            delay(BACKGROUND_LOCK_GRACE_MS)
-            pinLockStore.lock()
+        if (pinLockTransientLeave.isActive()) {
+            Log.d(TAG, "skip PIN lock (transient system UI)")
+            return
         }
+        Log.d(TAG, "PIN lock on background")
+        pinLockStore.lock()
     }
 
     fun onAppForegrounded() {
         appForegroundTracker.onForeground()
-        backgroundLockJob?.cancel()
-        backgroundLockJob = null
         if (gate.value != SessionGate.Login && gate.value != SessionGate.Loading) {
             viewModelScope.launch {
                 runCatching { sessionCoordinator.onForeground() }
@@ -101,8 +99,7 @@ class SessionViewModel @Inject constructor(
         }
     }
 
-    companion object {
-        /** Avoid locking over camera/gallery pickers; still lock after leaving the app. */
-        const val BACKGROUND_LOCK_GRACE_MS = 15_000L
+    private companion object {
+        const val TAG = "KChatPinLock"
     }
 }

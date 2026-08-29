@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
@@ -57,7 +58,7 @@ fun ChatInputBar(
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surface)
             .padding(horizontal = 8.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.Bottom,
     ) {
         IconButton(onClick = onAttachClick) {
             Icon(Icons.Default.AttachFile, contentDescription = "Đính kèm")
@@ -67,22 +68,30 @@ fun ChatInputBar(
             onValueChange = onValueChange,
             modifier = Modifier
                 .weight(1f)
-                .then(
-                    if (enterToSend) {
-                        Modifier.onPreviewKeyEvent { event ->
-                            if (event.type == KeyEventType.KeyDown &&
-                                (event.key == Key.Enter || event.key == Key.NumPadEnter)
-                            ) {
-                                if (value.text.isNotBlank()) onSend()
-                                true
-                            } else {
-                                false
-                            }
-                        }
+                .onPreviewKeyEvent { event ->
+                    if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                    if (event.key != Key.Enter && event.key != Key.NumPadEnter) {
+                        return@onPreviewKeyEvent false
+                    }
+                    if (event.isShiftPressed) {
+                        val text = value.text
+                        val start = value.selection.min
+                        val end = value.selection.max
+                        val next = text.replaceRange(start, end, "\n")
+                        onValueChange(
+                            TextFieldValue(
+                                text = next,
+                                selection = TextRange(start + 1),
+                            ),
+                        )
+                        true
+                    } else if (enterToSend) {
+                        if (value.text.isNotBlank()) onSend()
+                        true
                     } else {
-                        Modifier
-                    },
-                ),
+                        false
+                    }
+                },
             placeholder = { Text(placeholder) },
             shape = RoundedCornerShape(KChatDimens.inputRadius),
             colors = OutlinedTextFieldDefaults.colors(
@@ -90,7 +99,7 @@ fun ChatInputBar(
                 focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
                 unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
             ),
-            maxLines = if (enterToSend) 1 else 4,
+            maxLines = 8,
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Text,
                 imeAction = if (enterToSend) ImeAction.Send else ImeAction.Default,

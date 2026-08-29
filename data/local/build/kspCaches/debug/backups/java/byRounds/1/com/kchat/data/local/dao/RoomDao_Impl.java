@@ -49,7 +49,7 @@ public final class RoomDao_Impl implements RoomDao {
       @Override
       @NonNull
       protected String createQuery() {
-        return "INSERT OR REPLACE INTO `rooms` (`id`,`title`,`preview`,`time`,`unreadCount`,`isOnline`,`isChannel`,`isGroup`,`memberCount`,`disappearingAfterSeconds`,`myRole`,`isMuted`,`mutedUntilEpochMs`,`updatedAt`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+        return "INSERT OR REPLACE INTO `rooms` (`id`,`title`,`preview`,`time`,`unreadCount`,`isOnline`,`isChannel`,`isGroup`,`memberCount`,`disappearingAfterSeconds`,`myRole`,`isMuted`,`mutedUntilEpochMs`,`avatarUrl`,`updatedAt`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
       }
 
       @Override
@@ -84,7 +84,12 @@ public final class RoomDao_Impl implements RoomDao {
         } else {
           statement.bindLong(13, entity.getMutedUntilEpochMs());
         }
-        statement.bindLong(14, entity.getUpdatedAt());
+        if (entity.getAvatarUrl() == null) {
+          statement.bindNull(14);
+        } else {
+          statement.bindString(14, entity.getAvatarUrl());
+        }
+        statement.bindLong(15, entity.getUpdatedAt());
       }
     };
     this.__preparedStmtOfResetPreviewsAfterMessageWipe = new SharedSQLiteStatement(__db) {
@@ -227,6 +232,7 @@ public final class RoomDao_Impl implements RoomDao {
           final int _cursorIndexOfMyRole = CursorUtil.getColumnIndexOrThrow(_cursor, "myRole");
           final int _cursorIndexOfIsMuted = CursorUtil.getColumnIndexOrThrow(_cursor, "isMuted");
           final int _cursorIndexOfMutedUntilEpochMs = CursorUtil.getColumnIndexOrThrow(_cursor, "mutedUntilEpochMs");
+          final int _cursorIndexOfAvatarUrl = CursorUtil.getColumnIndexOrThrow(_cursor, "avatarUrl");
           final int _cursorIndexOfUpdatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "updatedAt");
           final List<RoomEntity> _result = new ArrayList<RoomEntity>(_cursor.getCount());
           while (_cursor.moveToNext()) {
@@ -277,9 +283,15 @@ public final class RoomDao_Impl implements RoomDao {
             } else {
               _tmpMutedUntilEpochMs = _cursor.getLong(_cursorIndexOfMutedUntilEpochMs);
             }
+            final String _tmpAvatarUrl;
+            if (_cursor.isNull(_cursorIndexOfAvatarUrl)) {
+              _tmpAvatarUrl = null;
+            } else {
+              _tmpAvatarUrl = _cursor.getString(_cursorIndexOfAvatarUrl);
+            }
             final long _tmpUpdatedAt;
             _tmpUpdatedAt = _cursor.getLong(_cursorIndexOfUpdatedAt);
-            _item = new RoomEntity(_tmpId,_tmpTitle,_tmpPreview,_tmpTime,_tmpUnreadCount,_tmpIsOnline,_tmpIsChannel,_tmpIsGroup,_tmpMemberCount,_tmpDisappearingAfterSeconds,_tmpMyRole,_tmpIsMuted,_tmpMutedUntilEpochMs,_tmpUpdatedAt);
+            _item = new RoomEntity(_tmpId,_tmpTitle,_tmpPreview,_tmpTime,_tmpUnreadCount,_tmpIsOnline,_tmpIsChannel,_tmpIsGroup,_tmpMemberCount,_tmpDisappearingAfterSeconds,_tmpMyRole,_tmpIsMuted,_tmpMutedUntilEpochMs,_tmpAvatarUrl,_tmpUpdatedAt);
             _result.add(_item);
           }
           return _result;
@@ -321,6 +333,7 @@ public final class RoomDao_Impl implements RoomDao {
           final int _cursorIndexOfMyRole = CursorUtil.getColumnIndexOrThrow(_cursor, "myRole");
           final int _cursorIndexOfIsMuted = CursorUtil.getColumnIndexOrThrow(_cursor, "isMuted");
           final int _cursorIndexOfMutedUntilEpochMs = CursorUtil.getColumnIndexOrThrow(_cursor, "mutedUntilEpochMs");
+          final int _cursorIndexOfAvatarUrl = CursorUtil.getColumnIndexOrThrow(_cursor, "avatarUrl");
           final int _cursorIndexOfUpdatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "updatedAt");
           final RoomEntity _result;
           if (_cursor.moveToFirst()) {
@@ -370,9 +383,15 @@ public final class RoomDao_Impl implements RoomDao {
             } else {
               _tmpMutedUntilEpochMs = _cursor.getLong(_cursorIndexOfMutedUntilEpochMs);
             }
+            final String _tmpAvatarUrl;
+            if (_cursor.isNull(_cursorIndexOfAvatarUrl)) {
+              _tmpAvatarUrl = null;
+            } else {
+              _tmpAvatarUrl = _cursor.getString(_cursorIndexOfAvatarUrl);
+            }
             final long _tmpUpdatedAt;
             _tmpUpdatedAt = _cursor.getLong(_cursorIndexOfUpdatedAt);
-            _result = new RoomEntity(_tmpId,_tmpTitle,_tmpPreview,_tmpTime,_tmpUnreadCount,_tmpIsOnline,_tmpIsChannel,_tmpIsGroup,_tmpMemberCount,_tmpDisappearingAfterSeconds,_tmpMyRole,_tmpIsMuted,_tmpMutedUntilEpochMs,_tmpUpdatedAt);
+            _result = new RoomEntity(_tmpId,_tmpTitle,_tmpPreview,_tmpTime,_tmpUnreadCount,_tmpIsOnline,_tmpIsChannel,_tmpIsGroup,_tmpMemberCount,_tmpDisappearingAfterSeconds,_tmpMyRole,_tmpIsMuted,_tmpMutedUntilEpochMs,_tmpAvatarUrl,_tmpUpdatedAt);
           } else {
             _result = null;
           }

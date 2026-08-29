@@ -94,6 +94,7 @@ import com.kchat.data.repository.EmergencyWipeCoordinator;
 import com.kchat.data.repository.EmergencyWipeStore;
 import com.kchat.data.repository.IncomingMessageNotifier;
 import com.kchat.data.repository.PinLockStore;
+import com.kchat.data.repository.PinLockTransientLeave;
 import com.kchat.data.repository.PushNavigationStore;
 import com.kchat.data.repository.PushTokenRegistrar;
 import com.kchat.data.repository.PushTokenSync;
@@ -126,6 +127,7 @@ import com.kchat.di.RepositoryModule_ProvideEmergencyWipeCoordinatorFactory;
 import com.kchat.di.RepositoryModule_ProvideEmergencyWipeStoreFactory;
 import com.kchat.di.RepositoryModule_ProvideIncomingMessageNotifierFactory;
 import com.kchat.di.RepositoryModule_ProvidePinLockStoreFactory;
+import com.kchat.di.RepositoryModule_ProvidePinLockTransientLeaveFactory;
 import com.kchat.di.RepositoryModule_ProvidePushNavigationStoreFactory;
 import com.kchat.di.RepositoryModule_ProvidePushTokenRegistrarFactory;
 import com.kchat.di.RepositoryModule_ProvidePushTokenSyncFactory;
@@ -530,100 +532,101 @@ public final class DaggerKChatApplication_HiltComponents_SingletonC {
     private MainActivity injectMainActivity2(MainActivity instance) {
       MainActivity_MembersInjector.injectPushNavigationStore(instance, singletonCImpl.providePushNavigationStoreProvider.get());
       MainActivity_MembersInjector.injectPushNotificationHelper(instance, singletonCImpl.pushNotificationHelperProvider.get());
+      MainActivity_MembersInjector.injectPinLockTransientLeave(instance, singletonCImpl.providePinLockTransientLeaveProvider.get());
       return instance;
     }
 
     @IdentifierNameString
     private static final class LazyClassKeyProvider {
-      static String com_kchat_core_navigation_viewmodel_RegisterViewModel = "com.kchat.core.navigation.viewmodel.RegisterViewModel";
-
-      static String com_kchat_core_navigation_viewmodel_ChatRoomViewModel = "com.kchat.core.navigation.viewmodel.ChatRoomViewModel";
-
-      static String com_kchat_core_navigation_viewmodel_PinSettingsViewModel = "com.kchat.core.navigation.viewmodel.PinSettingsViewModel";
+      static String com_kchat_core_navigation_viewmodel_ChatListViewModel = "com.kchat.core.navigation.viewmodel.ChatListViewModel";
 
       static String com_kchat_core_navigation_viewmodel_DevicesViewModel = "com.kchat.core.navigation.viewmodel.DevicesViewModel";
 
-      static String com_kchat_core_navigation_viewmodel_VerifyResetOtpViewModel = "com.kchat.core.navigation.viewmodel.VerifyResetOtpViewModel";
-
-      static String com_kchat_core_navigation_viewmodel_InChatSearchViewModel = "com.kchat.core.navigation.viewmodel.InChatSearchViewModel";
-
-      static String com_kchat_core_navigation_viewmodel_SettingsViewModel = "com.kchat.core.navigation.viewmodel.SettingsViewModel";
-
-      static String com_kchat_core_navigation_viewmodel_ChatListViewModel = "com.kchat.core.navigation.viewmodel.ChatListViewModel";
-
-      static String com_kchat_core_navigation_viewmodel_GroupInfoViewModel = "com.kchat.core.navigation.viewmodel.GroupInfoViewModel";
-
-      static String com_kchat_core_navigation_viewmodel_CallViewModel = "com.kchat.core.navigation.viewmodel.CallViewModel";
-
-      static String com_kchat_core_navigation_viewmodel_ContactsViewModel = "com.kchat.core.navigation.viewmodel.ContactsViewModel";
-
-      static String com_kchat_core_navigation_viewmodel_ForgotPasswordViewModel = "com.kchat.core.navigation.viewmodel.ForgotPasswordViewModel";
-
       static String com_kchat_core_navigation_viewmodel_LoginViewModel = "com.kchat.core.navigation.viewmodel.LoginViewModel";
+
+      static String com_kchat_core_navigation_viewmodel_ChatRoomViewModel = "com.kchat.core.navigation.viewmodel.ChatRoomViewModel";
 
       static String com_kchat_core_navigation_viewmodel_CreateGroupViewModel = "com.kchat.core.navigation.viewmodel.CreateGroupViewModel";
 
-      static String com_kchat_core_navigation_viewmodel_IncomingCallViewModel = "com.kchat.core.navigation.viewmodel.IncomingCallViewModel";
+      static String com_kchat_core_navigation_viewmodel_ForgotPasswordViewModel = "com.kchat.core.navigation.viewmodel.ForgotPasswordViewModel";
 
-      static String com_kchat_core_navigation_viewmodel_PinLockViewModel = "com.kchat.core.navigation.viewmodel.PinLockViewModel";
+      static String com_kchat_core_navigation_viewmodel_RegisterViewModel = "com.kchat.core.navigation.viewmodel.RegisterViewModel";
 
-      static String com_kchat_core_navigation_viewmodel_SessionViewModel = "com.kchat.core.navigation.viewmodel.SessionViewModel";
+      static String com_kchat_core_navigation_viewmodel_InChatSearchViewModel = "com.kchat.core.navigation.viewmodel.InChatSearchViewModel";
+
+      static String com_kchat_core_navigation_viewmodel_GroupInfoViewModel = "com.kchat.core.navigation.viewmodel.GroupInfoViewModel";
 
       static String com_kchat_core_navigation_viewmodel_ResetPasswordViewModel = "com.kchat.core.navigation.viewmodel.ResetPasswordViewModel";
 
-      @KeepFieldType
-      RegisterViewModel com_kchat_core_navigation_viewmodel_RegisterViewModel2;
+      static String com_kchat_core_navigation_viewmodel_ContactsViewModel = "com.kchat.core.navigation.viewmodel.ContactsViewModel";
 
-      @KeepFieldType
-      ChatRoomViewModel com_kchat_core_navigation_viewmodel_ChatRoomViewModel2;
+      static String com_kchat_core_navigation_viewmodel_IncomingCallViewModel = "com.kchat.core.navigation.viewmodel.IncomingCallViewModel";
 
-      @KeepFieldType
-      PinSettingsViewModel com_kchat_core_navigation_viewmodel_PinSettingsViewModel2;
+      static String com_kchat_core_navigation_viewmodel_PinSettingsViewModel = "com.kchat.core.navigation.viewmodel.PinSettingsViewModel";
 
-      @KeepFieldType
-      DevicesViewModel com_kchat_core_navigation_viewmodel_DevicesViewModel2;
+      static String com_kchat_core_navigation_viewmodel_PinLockViewModel = "com.kchat.core.navigation.viewmodel.PinLockViewModel";
 
-      @KeepFieldType
-      VerifyResetOtpViewModel com_kchat_core_navigation_viewmodel_VerifyResetOtpViewModel2;
+      static String com_kchat_core_navigation_viewmodel_SettingsViewModel = "com.kchat.core.navigation.viewmodel.SettingsViewModel";
 
-      @KeepFieldType
-      InChatSearchViewModel com_kchat_core_navigation_viewmodel_InChatSearchViewModel2;
+      static String com_kchat_core_navigation_viewmodel_SessionViewModel = "com.kchat.core.navigation.viewmodel.SessionViewModel";
 
-      @KeepFieldType
-      SettingsViewModel com_kchat_core_navigation_viewmodel_SettingsViewModel2;
+      static String com_kchat_core_navigation_viewmodel_VerifyResetOtpViewModel = "com.kchat.core.navigation.viewmodel.VerifyResetOtpViewModel";
+
+      static String com_kchat_core_navigation_viewmodel_CallViewModel = "com.kchat.core.navigation.viewmodel.CallViewModel";
 
       @KeepFieldType
       ChatListViewModel com_kchat_core_navigation_viewmodel_ChatListViewModel2;
 
       @KeepFieldType
-      GroupInfoViewModel com_kchat_core_navigation_viewmodel_GroupInfoViewModel2;
-
-      @KeepFieldType
-      CallViewModel com_kchat_core_navigation_viewmodel_CallViewModel2;
-
-      @KeepFieldType
-      ContactsViewModel com_kchat_core_navigation_viewmodel_ContactsViewModel2;
-
-      @KeepFieldType
-      ForgotPasswordViewModel com_kchat_core_navigation_viewmodel_ForgotPasswordViewModel2;
+      DevicesViewModel com_kchat_core_navigation_viewmodel_DevicesViewModel2;
 
       @KeepFieldType
       LoginViewModel com_kchat_core_navigation_viewmodel_LoginViewModel2;
 
       @KeepFieldType
+      ChatRoomViewModel com_kchat_core_navigation_viewmodel_ChatRoomViewModel2;
+
+      @KeepFieldType
       CreateGroupViewModel com_kchat_core_navigation_viewmodel_CreateGroupViewModel2;
+
+      @KeepFieldType
+      ForgotPasswordViewModel com_kchat_core_navigation_viewmodel_ForgotPasswordViewModel2;
+
+      @KeepFieldType
+      RegisterViewModel com_kchat_core_navigation_viewmodel_RegisterViewModel2;
+
+      @KeepFieldType
+      InChatSearchViewModel com_kchat_core_navigation_viewmodel_InChatSearchViewModel2;
+
+      @KeepFieldType
+      GroupInfoViewModel com_kchat_core_navigation_viewmodel_GroupInfoViewModel2;
+
+      @KeepFieldType
+      ResetPasswordViewModel com_kchat_core_navigation_viewmodel_ResetPasswordViewModel2;
+
+      @KeepFieldType
+      ContactsViewModel com_kchat_core_navigation_viewmodel_ContactsViewModel2;
 
       @KeepFieldType
       IncomingCallViewModel com_kchat_core_navigation_viewmodel_IncomingCallViewModel2;
 
       @KeepFieldType
+      PinSettingsViewModel com_kchat_core_navigation_viewmodel_PinSettingsViewModel2;
+
+      @KeepFieldType
       PinLockViewModel com_kchat_core_navigation_viewmodel_PinLockViewModel2;
+
+      @KeepFieldType
+      SettingsViewModel com_kchat_core_navigation_viewmodel_SettingsViewModel2;
 
       @KeepFieldType
       SessionViewModel com_kchat_core_navigation_viewmodel_SessionViewModel2;
 
       @KeepFieldType
-      ResetPasswordViewModel com_kchat_core_navigation_viewmodel_ResetPasswordViewModel2;
+      VerifyResetOtpViewModel com_kchat_core_navigation_viewmodel_VerifyResetOtpViewModel2;
+
+      @KeepFieldType
+      CallViewModel com_kchat_core_navigation_viewmodel_CallViewModel2;
     }
   }
 
@@ -717,92 +720,92 @@ public final class DaggerKChatApplication_HiltComponents_SingletonC {
 
     @IdentifierNameString
     private static final class LazyClassKeyProvider {
-      static String com_kchat_core_navigation_viewmodel_ChatListViewModel = "com.kchat.core.navigation.viewmodel.ChatListViewModel";
+      static String com_kchat_core_navigation_viewmodel_ResetPasswordViewModel = "com.kchat.core.navigation.viewmodel.ResetPasswordViewModel";
 
       static String com_kchat_core_navigation_viewmodel_CreateGroupViewModel = "com.kchat.core.navigation.viewmodel.CreateGroupViewModel";
 
-      static String com_kchat_core_navigation_viewmodel_ForgotPasswordViewModel = "com.kchat.core.navigation.viewmodel.ForgotPasswordViewModel";
-
-      static String com_kchat_core_navigation_viewmodel_VerifyResetOtpViewModel = "com.kchat.core.navigation.viewmodel.VerifyResetOtpViewModel";
+      static String com_kchat_core_navigation_viewmodel_PinLockViewModel = "com.kchat.core.navigation.viewmodel.PinLockViewModel";
 
       static String com_kchat_core_navigation_viewmodel_RegisterViewModel = "com.kchat.core.navigation.viewmodel.RegisterViewModel";
 
-      static String com_kchat_core_navigation_viewmodel_SessionViewModel = "com.kchat.core.navigation.viewmodel.SessionViewModel";
-
-      static String com_kchat_core_navigation_viewmodel_ContactsViewModel = "com.kchat.core.navigation.viewmodel.ContactsViewModel";
-
       static String com_kchat_core_navigation_viewmodel_InChatSearchViewModel = "com.kchat.core.navigation.viewmodel.InChatSearchViewModel";
-
-      static String com_kchat_core_navigation_viewmodel_IncomingCallViewModel = "com.kchat.core.navigation.viewmodel.IncomingCallViewModel";
-
-      static String com_kchat_core_navigation_viewmodel_GroupInfoViewModel = "com.kchat.core.navigation.viewmodel.GroupInfoViewModel";
-
-      static String com_kchat_core_navigation_viewmodel_CallViewModel = "com.kchat.core.navigation.viewmodel.CallViewModel";
-
-      static String com_kchat_core_navigation_viewmodel_ResetPasswordViewModel = "com.kchat.core.navigation.viewmodel.ResetPasswordViewModel";
-
-      static String com_kchat_core_navigation_viewmodel_PinSettingsViewModel = "com.kchat.core.navigation.viewmodel.PinSettingsViewModel";
-
-      static String com_kchat_core_navigation_viewmodel_SettingsViewModel = "com.kchat.core.navigation.viewmodel.SettingsViewModel";
-
-      static String com_kchat_core_navigation_viewmodel_PinLockViewModel = "com.kchat.core.navigation.viewmodel.PinLockViewModel";
 
       static String com_kchat_core_navigation_viewmodel_LoginViewModel = "com.kchat.core.navigation.viewmodel.LoginViewModel";
 
+      static String com_kchat_core_navigation_viewmodel_IncomingCallViewModel = "com.kchat.core.navigation.viewmodel.IncomingCallViewModel";
+
+      static String com_kchat_core_navigation_viewmodel_ChatListViewModel = "com.kchat.core.navigation.viewmodel.ChatListViewModel";
+
       static String com_kchat_core_navigation_viewmodel_DevicesViewModel = "com.kchat.core.navigation.viewmodel.DevicesViewModel";
 
+      static String com_kchat_core_navigation_viewmodel_PinSettingsViewModel = "com.kchat.core.navigation.viewmodel.PinSettingsViewModel";
+
+      static String com_kchat_core_navigation_viewmodel_VerifyResetOtpViewModel = "com.kchat.core.navigation.viewmodel.VerifyResetOtpViewModel";
+
+      static String com_kchat_core_navigation_viewmodel_CallViewModel = "com.kchat.core.navigation.viewmodel.CallViewModel";
+
+      static String com_kchat_core_navigation_viewmodel_SessionViewModel = "com.kchat.core.navigation.viewmodel.SessionViewModel";
+
+      static String com_kchat_core_navigation_viewmodel_SettingsViewModel = "com.kchat.core.navigation.viewmodel.SettingsViewModel";
+
+      static String com_kchat_core_navigation_viewmodel_GroupInfoViewModel = "com.kchat.core.navigation.viewmodel.GroupInfoViewModel";
+
+      static String com_kchat_core_navigation_viewmodel_ContactsViewModel = "com.kchat.core.navigation.viewmodel.ContactsViewModel";
+
+      static String com_kchat_core_navigation_viewmodel_ForgotPasswordViewModel = "com.kchat.core.navigation.viewmodel.ForgotPasswordViewModel";
+
       static String com_kchat_core_navigation_viewmodel_ChatRoomViewModel = "com.kchat.core.navigation.viewmodel.ChatRoomViewModel";
-
-      @KeepFieldType
-      ChatListViewModel com_kchat_core_navigation_viewmodel_ChatListViewModel2;
-
-      @KeepFieldType
-      CreateGroupViewModel com_kchat_core_navigation_viewmodel_CreateGroupViewModel2;
-
-      @KeepFieldType
-      ForgotPasswordViewModel com_kchat_core_navigation_viewmodel_ForgotPasswordViewModel2;
-
-      @KeepFieldType
-      VerifyResetOtpViewModel com_kchat_core_navigation_viewmodel_VerifyResetOtpViewModel2;
-
-      @KeepFieldType
-      RegisterViewModel com_kchat_core_navigation_viewmodel_RegisterViewModel2;
-
-      @KeepFieldType
-      SessionViewModel com_kchat_core_navigation_viewmodel_SessionViewModel2;
-
-      @KeepFieldType
-      ContactsViewModel com_kchat_core_navigation_viewmodel_ContactsViewModel2;
-
-      @KeepFieldType
-      InChatSearchViewModel com_kchat_core_navigation_viewmodel_InChatSearchViewModel2;
-
-      @KeepFieldType
-      IncomingCallViewModel com_kchat_core_navigation_viewmodel_IncomingCallViewModel2;
-
-      @KeepFieldType
-      GroupInfoViewModel com_kchat_core_navigation_viewmodel_GroupInfoViewModel2;
-
-      @KeepFieldType
-      CallViewModel com_kchat_core_navigation_viewmodel_CallViewModel2;
 
       @KeepFieldType
       ResetPasswordViewModel com_kchat_core_navigation_viewmodel_ResetPasswordViewModel2;
 
       @KeepFieldType
-      PinSettingsViewModel com_kchat_core_navigation_viewmodel_PinSettingsViewModel2;
-
-      @KeepFieldType
-      SettingsViewModel com_kchat_core_navigation_viewmodel_SettingsViewModel2;
+      CreateGroupViewModel com_kchat_core_navigation_viewmodel_CreateGroupViewModel2;
 
       @KeepFieldType
       PinLockViewModel com_kchat_core_navigation_viewmodel_PinLockViewModel2;
 
       @KeepFieldType
+      RegisterViewModel com_kchat_core_navigation_viewmodel_RegisterViewModel2;
+
+      @KeepFieldType
+      InChatSearchViewModel com_kchat_core_navigation_viewmodel_InChatSearchViewModel2;
+
+      @KeepFieldType
       LoginViewModel com_kchat_core_navigation_viewmodel_LoginViewModel2;
 
       @KeepFieldType
+      IncomingCallViewModel com_kchat_core_navigation_viewmodel_IncomingCallViewModel2;
+
+      @KeepFieldType
+      ChatListViewModel com_kchat_core_navigation_viewmodel_ChatListViewModel2;
+
+      @KeepFieldType
       DevicesViewModel com_kchat_core_navigation_viewmodel_DevicesViewModel2;
+
+      @KeepFieldType
+      PinSettingsViewModel com_kchat_core_navigation_viewmodel_PinSettingsViewModel2;
+
+      @KeepFieldType
+      VerifyResetOtpViewModel com_kchat_core_navigation_viewmodel_VerifyResetOtpViewModel2;
+
+      @KeepFieldType
+      CallViewModel com_kchat_core_navigation_viewmodel_CallViewModel2;
+
+      @KeepFieldType
+      SessionViewModel com_kchat_core_navigation_viewmodel_SessionViewModel2;
+
+      @KeepFieldType
+      SettingsViewModel com_kchat_core_navigation_viewmodel_SettingsViewModel2;
+
+      @KeepFieldType
+      GroupInfoViewModel com_kchat_core_navigation_viewmodel_GroupInfoViewModel2;
+
+      @KeepFieldType
+      ContactsViewModel com_kchat_core_navigation_viewmodel_ContactsViewModel2;
+
+      @KeepFieldType
+      ForgotPasswordViewModel com_kchat_core_navigation_viewmodel_ForgotPasswordViewModel2;
 
       @KeepFieldType
       ChatRoomViewModel com_kchat_core_navigation_viewmodel_ChatRoomViewModel2;
@@ -836,7 +839,7 @@ public final class DaggerKChatApplication_HiltComponents_SingletonC {
           return (T) new ChatListViewModel(singletonCImpl.provideChatRepositoryProvider.get(), singletonCImpl.provideTypingStateStoreProvider.get());
 
           case 2: // com.kchat.core.navigation.viewmodel.ChatRoomViewModel 
-          return (T) new ChatRoomViewModel(viewModelCImpl.savedStateHandle, singletonCImpl.provideChatRepositoryProvider.get(), singletonCImpl.provideActiveRoomTrackerProvider.get(), singletonCImpl.provideRealtimeCoordinatorProvider.get());
+          return (T) new ChatRoomViewModel(viewModelCImpl.savedStateHandle, singletonCImpl.provideChatRepositoryProvider.get(), singletonCImpl.provideContactsRepositoryProvider.get(), singletonCImpl.provideActiveRoomTrackerProvider.get(), singletonCImpl.provideRealtimeCoordinatorProvider.get());
 
           case 3: // com.kchat.core.navigation.viewmodel.ContactsViewModel 
           return (T) new ContactsViewModel(singletonCImpl.provideContactsRepositoryProvider.get());
@@ -875,7 +878,7 @@ public final class DaggerKChatApplication_HiltComponents_SingletonC {
           return (T) new ResetPasswordViewModel(viewModelCImpl.savedStateHandle, singletonCImpl.provideAuthRepositoryProvider.get());
 
           case 15: // com.kchat.core.navigation.viewmodel.SessionViewModel 
-          return (T) new SessionViewModel(singletonCImpl.provideAuthRepositoryProvider.get(), singletonCImpl.provideTokenStoreProvider.get(), singletonCImpl.provideSessionCoordinatorProvider.get(), singletonCImpl.provideRealtimeCoordinatorProvider.get(), singletonCImpl.providePinLockStoreProvider.get(), singletonCImpl.provideAppForegroundTrackerProvider.get(), singletonCImpl.provideActiveRoomTrackerProvider.get());
+          return (T) new SessionViewModel(singletonCImpl.provideAuthRepositoryProvider.get(), singletonCImpl.provideTokenStoreProvider.get(), singletonCImpl.provideSessionCoordinatorProvider.get(), singletonCImpl.provideRealtimeCoordinatorProvider.get(), singletonCImpl.providePinLockStoreProvider.get(), singletonCImpl.providePinLockTransientLeaveProvider.get(), singletonCImpl.provideAppForegroundTrackerProvider.get(), singletonCImpl.provideActiveRoomTrackerProvider.get());
 
           case 16: // com.kchat.core.navigation.viewmodel.SettingsViewModel 
           return (T) new SettingsViewModel(singletonCImpl.provideSettingsRepositoryProvider.get(), singletonCImpl.provideAuthRepositoryProvider.get(), singletonCImpl.providePinLockStoreProvider.get());
@@ -1005,6 +1008,8 @@ public final class DaggerKChatApplication_HiltComponents_SingletonC {
     private Provider<PushNavigationStore> providePushNavigationStoreProvider;
 
     private Provider<PushNotificationHelper> pushNotificationHelperProvider;
+
+    private Provider<PinLockTransientLeave> providePinLockTransientLeaveProvider;
 
     private Provider<CallSignalBus> provideCallSignalBusProvider;
 
@@ -1141,66 +1146,67 @@ public final class DaggerKChatApplication_HiltComponents_SingletonC {
       this.localCacheCleanupWorker_AssistedFactoryProvider = SingleCheck.provider(new SwitchingProvider<LocalCacheCleanupWorker_AssistedFactory>(singletonCImpl, 9));
       this.providePushNavigationStoreProvider = DoubleCheck.provider(new SwitchingProvider<PushNavigationStore>(singletonCImpl, 12));
       this.pushNotificationHelperProvider = DoubleCheck.provider(new SwitchingProvider<PushNotificationHelper>(singletonCImpl, 13));
-      this.provideCallSignalBusProvider = DoubleCheck.provider(new SwitchingProvider<CallSignalBus>(singletonCImpl, 16));
-      this.fakeCallRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<FakeCallRepository>(singletonCImpl, 15));
-      this.provideOkHttpClientProvider = DoubleCheck.provider(new SwitchingProvider<OkHttpClient>(singletonCImpl, 20));
-      this.provideRetrofitProvider = DoubleCheck.provider(new SwitchingProvider<Retrofit>(singletonCImpl, 19));
-      this.provideKChatApiProvider = DoubleCheck.provider(new SwitchingProvider<KChatApi>(singletonCImpl, 18));
-      this.networkCallRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<NetworkCallRepository>(singletonCImpl, 17));
-      this.provideCallRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<CallRepository>(singletonCImpl, 14));
-      this.fakeRealtimeCoordinatorProvider = DoubleCheck.provider(new SwitchingProvider<FakeRealtimeCoordinator>(singletonCImpl, 22));
-      this.provideWsOkHttpClientProvider = DoubleCheck.provider(new SwitchingProvider<OkHttpClient>(singletonCImpl, 25));
-      this.provideWebSocketClientProvider = DoubleCheck.provider(new SwitchingProvider<KChatWebSocketClient>(singletonCImpl, 24));
-      this.dataStoreEmergencyWipeStoreProvider = DoubleCheck.provider(new SwitchingProvider<DataStoreEmergencyWipeStore>(singletonCImpl, 29));
+      this.providePinLockTransientLeaveProvider = DoubleCheck.provider(new SwitchingProvider<PinLockTransientLeave>(singletonCImpl, 14));
+      this.provideCallSignalBusProvider = DoubleCheck.provider(new SwitchingProvider<CallSignalBus>(singletonCImpl, 17));
+      this.fakeCallRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<FakeCallRepository>(singletonCImpl, 16));
+      this.provideOkHttpClientProvider = DoubleCheck.provider(new SwitchingProvider<OkHttpClient>(singletonCImpl, 21));
+      this.provideRetrofitProvider = DoubleCheck.provider(new SwitchingProvider<Retrofit>(singletonCImpl, 20));
+      this.provideKChatApiProvider = DoubleCheck.provider(new SwitchingProvider<KChatApi>(singletonCImpl, 19));
+      this.networkCallRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<NetworkCallRepository>(singletonCImpl, 18));
+      this.provideCallRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<CallRepository>(singletonCImpl, 15));
+      this.fakeRealtimeCoordinatorProvider = DoubleCheck.provider(new SwitchingProvider<FakeRealtimeCoordinator>(singletonCImpl, 23));
+      this.provideWsOkHttpClientProvider = DoubleCheck.provider(new SwitchingProvider<OkHttpClient>(singletonCImpl, 26));
+      this.provideWebSocketClientProvider = DoubleCheck.provider(new SwitchingProvider<KChatWebSocketClient>(singletonCImpl, 25));
     }
 
     @SuppressWarnings("unchecked")
     private void initialize2(final ApplicationContextModule applicationContextModuleParam) {
-      this.provideEmergencyWipeStoreProvider = DoubleCheck.provider(new SwitchingProvider<EmergencyWipeStore>(singletonCImpl, 28));
-      this.fakeChatRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<FakeChatRepository>(singletonCImpl, 27));
-      this.provideTypingStateStoreProvider = DoubleCheck.provider(new SwitchingProvider<TypingStateStore>(singletonCImpl, 31));
-      this.provideApiBaseUrlProvider = DoubleCheck.provider(new SwitchingProvider<String>(singletonCImpl, 32));
-      this.networkChatRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<NetworkChatRepository>(singletonCImpl, 30));
-      this.provideChatRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<ChatRepository>(singletonCImpl, 26));
-      this.fakeContactsRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<FakeContactsRepository>(singletonCImpl, 34));
-      this.networkContactsRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<NetworkContactsRepository>(singletonCImpl, 35));
-      this.provideContactsRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<ContactsRepository>(singletonCImpl, 33));
-      this.provideActiveRoomTrackerProvider = DoubleCheck.provider(new SwitchingProvider<ActiveRoomTracker>(singletonCImpl, 36));
-      this.noOpIncomingMessageNotifierProvider = DoubleCheck.provider(new SwitchingProvider<NoOpIncomingMessageNotifier>(singletonCImpl, 38));
-      this.provideAppForegroundTrackerProvider = DoubleCheck.provider(new SwitchingProvider<AppForegroundTracker>(singletonCImpl, 40));
-      this.workManagerLocalCacheCleanupSchedulerProvider = DoubleCheck.provider(new SwitchingProvider<WorkManagerLocalCacheCleanupScheduler>(singletonCImpl, 43));
-      this.fakeSettingsRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<FakeSettingsRepository>(singletonCImpl, 42));
-      this.networkSettingsRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<NetworkSettingsRepository>(singletonCImpl, 44));
-      this.provideSettingsRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<SettingsRepository>(singletonCImpl, 41));
-      this.incomingMessageNotifierImplProvider = DoubleCheck.provider(new SwitchingProvider<IncomingMessageNotifierImpl>(singletonCImpl, 39));
-      this.provideIncomingMessageNotifierProvider = DoubleCheck.provider(new SwitchingProvider<IncomingMessageNotifier>(singletonCImpl, 37));
-      this.networkRealtimeCoordinatorProvider = DoubleCheck.provider(new SwitchingProvider<NetworkRealtimeCoordinator>(singletonCImpl, 23));
-      this.provideRealtimeCoordinatorProvider = DoubleCheck.provider(new SwitchingProvider<RealtimeCoordinator>(singletonCImpl, 21));
-      this.fakePinLockStoreProvider = DoubleCheck.provider(new SwitchingProvider<FakePinLockStore>(singletonCImpl, 48));
-      this.dataStorePinLockStoreProvider = DoubleCheck.provider(new SwitchingProvider<DataStorePinLockStore>(singletonCImpl, 49));
-      this.providePinLockStoreProvider = DoubleCheck.provider(new SwitchingProvider<PinLockStore>(singletonCImpl, 47));
-      this.fakeAuthRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<FakeAuthRepository>(singletonCImpl, 46));
-      this.networkAuthRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<NetworkAuthRepository>(singletonCImpl, 50));
+      this.dataStoreEmergencyWipeStoreProvider = DoubleCheck.provider(new SwitchingProvider<DataStoreEmergencyWipeStore>(singletonCImpl, 30));
+      this.provideEmergencyWipeStoreProvider = DoubleCheck.provider(new SwitchingProvider<EmergencyWipeStore>(singletonCImpl, 29));
+      this.fakeChatRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<FakeChatRepository>(singletonCImpl, 28));
+      this.provideTypingStateStoreProvider = DoubleCheck.provider(new SwitchingProvider<TypingStateStore>(singletonCImpl, 32));
+      this.provideApiBaseUrlProvider = DoubleCheck.provider(new SwitchingProvider<String>(singletonCImpl, 33));
+      this.networkChatRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<NetworkChatRepository>(singletonCImpl, 31));
+      this.provideChatRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<ChatRepository>(singletonCImpl, 27));
+      this.fakeContactsRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<FakeContactsRepository>(singletonCImpl, 35));
+      this.networkContactsRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<NetworkContactsRepository>(singletonCImpl, 36));
+      this.provideContactsRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<ContactsRepository>(singletonCImpl, 34));
+      this.provideActiveRoomTrackerProvider = DoubleCheck.provider(new SwitchingProvider<ActiveRoomTracker>(singletonCImpl, 37));
+      this.noOpIncomingMessageNotifierProvider = DoubleCheck.provider(new SwitchingProvider<NoOpIncomingMessageNotifier>(singletonCImpl, 39));
+      this.provideAppForegroundTrackerProvider = DoubleCheck.provider(new SwitchingProvider<AppForegroundTracker>(singletonCImpl, 41));
+      this.workManagerLocalCacheCleanupSchedulerProvider = DoubleCheck.provider(new SwitchingProvider<WorkManagerLocalCacheCleanupScheduler>(singletonCImpl, 44));
+      this.fakeSettingsRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<FakeSettingsRepository>(singletonCImpl, 43));
+      this.networkSettingsRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<NetworkSettingsRepository>(singletonCImpl, 45));
+      this.provideSettingsRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<SettingsRepository>(singletonCImpl, 42));
+      this.incomingMessageNotifierImplProvider = DoubleCheck.provider(new SwitchingProvider<IncomingMessageNotifierImpl>(singletonCImpl, 40));
+      this.provideIncomingMessageNotifierProvider = DoubleCheck.provider(new SwitchingProvider<IncomingMessageNotifier>(singletonCImpl, 38));
+      this.networkRealtimeCoordinatorProvider = DoubleCheck.provider(new SwitchingProvider<NetworkRealtimeCoordinator>(singletonCImpl, 24));
+      this.provideRealtimeCoordinatorProvider = DoubleCheck.provider(new SwitchingProvider<RealtimeCoordinator>(singletonCImpl, 22));
+      this.fakePinLockStoreProvider = DoubleCheck.provider(new SwitchingProvider<FakePinLockStore>(singletonCImpl, 49));
+      this.dataStorePinLockStoreProvider = DoubleCheck.provider(new SwitchingProvider<DataStorePinLockStore>(singletonCImpl, 50));
+      this.providePinLockStoreProvider = DoubleCheck.provider(new SwitchingProvider<PinLockStore>(singletonCImpl, 48));
+      this.fakeAuthRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<FakeAuthRepository>(singletonCImpl, 47));
     }
 
     @SuppressWarnings("unchecked")
     private void initialize3(final ApplicationContextModule applicationContextModuleParam) {
-      this.provideAuthRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<AuthRepository>(singletonCImpl, 45));
-      this.fakePushTokenRegistrarProvider = DoubleCheck.provider(new SwitchingProvider<FakePushTokenRegistrar>(singletonCImpl, 56));
-      this.networkPushTokenRegistrarProvider = DoubleCheck.provider(new SwitchingProvider<NetworkPushTokenRegistrar>(singletonCImpl, 57));
-      this.providePushTokenRegistrarProvider = DoubleCheck.provider(new SwitchingProvider<PushTokenRegistrar>(singletonCImpl, 55));
-      this.fcmTokenHandlerProvider = DoubleCheck.provider(new SwitchingProvider<FcmTokenHandler>(singletonCImpl, 54));
-      this.firebasePushTokenSyncProvider = DoubleCheck.provider(new SwitchingProvider<FirebasePushTokenSync>(singletonCImpl, 53));
-      this.noOpPushTokenSyncProvider = DoubleCheck.provider(new SwitchingProvider<NoOpPushTokenSync>(singletonCImpl, 58));
-      this.providePushTokenSyncProvider = DoubleCheck.provider(new SwitchingProvider<PushTokenSync>(singletonCImpl, 52));
-      this.provideSessionCoordinatorProvider = DoubleCheck.provider(new SwitchingProvider<SessionCoordinator>(singletonCImpl, 51));
-      this.emergencyWipeCoordinatorImplProvider = DoubleCheck.provider(new SwitchingProvider<EmergencyWipeCoordinatorImpl>(singletonCImpl, 60));
-      this.provideEmergencyWipeCoordinatorProvider = DoubleCheck.provider(new SwitchingProvider<EmergencyWipeCoordinator>(singletonCImpl, 59));
+      this.networkAuthRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<NetworkAuthRepository>(singletonCImpl, 51));
+      this.provideAuthRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<AuthRepository>(singletonCImpl, 46));
+      this.fakePushTokenRegistrarProvider = DoubleCheck.provider(new SwitchingProvider<FakePushTokenRegistrar>(singletonCImpl, 57));
+      this.networkPushTokenRegistrarProvider = DoubleCheck.provider(new SwitchingProvider<NetworkPushTokenRegistrar>(singletonCImpl, 58));
+      this.providePushTokenRegistrarProvider = DoubleCheck.provider(new SwitchingProvider<PushTokenRegistrar>(singletonCImpl, 56));
+      this.fcmTokenHandlerProvider = DoubleCheck.provider(new SwitchingProvider<FcmTokenHandler>(singletonCImpl, 55));
+      this.firebasePushTokenSyncProvider = DoubleCheck.provider(new SwitchingProvider<FirebasePushTokenSync>(singletonCImpl, 54));
+      this.noOpPushTokenSyncProvider = DoubleCheck.provider(new SwitchingProvider<NoOpPushTokenSync>(singletonCImpl, 59));
+      this.providePushTokenSyncProvider = DoubleCheck.provider(new SwitchingProvider<PushTokenSync>(singletonCImpl, 53));
+      this.provideSessionCoordinatorProvider = DoubleCheck.provider(new SwitchingProvider<SessionCoordinator>(singletonCImpl, 52));
+      this.emergencyWipeCoordinatorImplProvider = DoubleCheck.provider(new SwitchingProvider<EmergencyWipeCoordinatorImpl>(singletonCImpl, 61));
+      this.provideEmergencyWipeCoordinatorProvider = DoubleCheck.provider(new SwitchingProvider<EmergencyWipeCoordinator>(singletonCImpl, 60));
     }
 
     @Override
-    public void injectKChatApplication(KChatApplication arg0) {
-      injectKChatApplication2(arg0);
+    public void injectKChatApplication(KChatApplication kChatApplication) {
+      injectKChatApplication2(kChatApplication);
     }
 
     @Override
@@ -1286,145 +1292,148 @@ public final class DaggerKChatApplication_HiltComponents_SingletonC {
           case 13: // com.kchat.push.PushNotificationHelper 
           return (T) new PushNotificationHelper(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.providePushNavigationStoreProvider.get());
 
-          case 14: // com.kchat.data.repository.CallRepository 
+          case 14: // com.kchat.data.repository.PinLockTransientLeave 
+          return (T) RepositoryModule_ProvidePinLockTransientLeaveFactory.providePinLockTransientLeave();
+
+          case 15: // com.kchat.data.repository.CallRepository 
           return (T) RepositoryModule_ProvideCallRepositoryFactory.provideCallRepository(singletonCImpl.fakeCallRepositoryProvider.get(), singletonCImpl.networkCallRepositoryProvider.get());
 
-          case 15: // com.kchat.data.fake.FakeCallRepository 
+          case 16: // com.kchat.data.fake.FakeCallRepository 
           return (T) new FakeCallRepository(singletonCImpl.provideCallSignalBusProvider.get());
 
-          case 16: // com.kchat.data.repository.CallSignalBus 
+          case 17: // com.kchat.data.repository.CallSignalBus 
           return (T) RepositoryModule_ProvideCallSignalBusFactory.provideCallSignalBus();
 
-          case 17: // com.kchat.data.network.repository.NetworkCallRepository 
+          case 18: // com.kchat.data.network.repository.NetworkCallRepository 
           return (T) new NetworkCallRepository(singletonCImpl.provideKChatApiProvider.get());
 
-          case 18: // com.kchat.data.network.api.KChatApi 
+          case 19: // com.kchat.data.network.api.KChatApi 
           return (T) NetworkModule_ProvideKChatApiFactory.provideKChatApi(singletonCImpl.provideRetrofitProvider.get());
 
-          case 19: // retrofit2.Retrofit 
+          case 20: // retrofit2.Retrofit 
           return (T) NetworkModule_ProvideRetrofitFactory.provideRetrofit(singletonCImpl.provideOkHttpClientProvider.get());
 
-          case 20: // okhttp3.OkHttpClient 
+          case 21: // okhttp3.OkHttpClient 
           return (T) NetworkModule_ProvideOkHttpClientFactory.provideOkHttpClient(singletonCImpl.provideAccessTokenHolderProvider.get(), singletonCImpl.provideTokenStoreProvider.get(), singletonCImpl.provideDeviceTokenStoreProvider.get(), singletonCImpl.provideTokenAuthenticatorProvider.get());
 
-          case 21: // com.kchat.data.repository.RealtimeCoordinator 
+          case 22: // com.kchat.data.repository.RealtimeCoordinator 
           return (T) RepositoryModule_ProvideRealtimeCoordinatorFactory.provideRealtimeCoordinator(singletonCImpl.fakeRealtimeCoordinatorProvider.get(), singletonCImpl.networkRealtimeCoordinatorProvider.get());
 
-          case 22: // com.kchat.data.fake.FakeRealtimeCoordinator 
+          case 23: // com.kchat.data.fake.FakeRealtimeCoordinator 
           return (T) new FakeRealtimeCoordinator();
 
-          case 23: // com.kchat.data.network.repository.NetworkRealtimeCoordinator 
+          case 24: // com.kchat.data.network.repository.NetworkRealtimeCoordinator 
           return (T) new NetworkRealtimeCoordinator(singletonCImpl.provideWebSocketClientProvider.get(), singletonCImpl.provideKChatApiProvider.get(), singletonCImpl.provideAccessTokenHolderProvider.get(), singletonCImpl.provideTokenStoreProvider.get(), singletonCImpl.provideDeviceTokenStoreProvider.get(), singletonCImpl.chatLocalDataSourceProvider.get(), singletonCImpl.provideChatRepositoryProvider.get(), singletonCImpl.provideContactsRepositoryProvider.get(), singletonCImpl.provideActiveRoomTrackerProvider.get(), singletonCImpl.provideTypingStateStoreProvider.get(), singletonCImpl.provideCallSignalBusProvider.get(), singletonCImpl.provideCallRepositoryProvider.get(), singletonCImpl.provideIncomingMessageNotifierProvider.get(), singletonCImpl.provideApiBaseUrlProvider.get());
 
-          case 24: // com.kchat.data.network.ws.KChatWebSocketClient 
+          case 25: // com.kchat.data.network.ws.KChatWebSocketClient 
           return (T) NetworkModule_ProvideWebSocketClientFactory.provideWebSocketClient(singletonCImpl.provideWsOkHttpClientProvider.get(), singletonCImpl.provideAccessTokenHolderProvider.get());
 
-          case 25: // @javax.inject.Named("ws") okhttp3.OkHttpClient 
+          case 26: // @javax.inject.Named("ws") okhttp3.OkHttpClient 
           return (T) NetworkModule_ProvideWsOkHttpClientFactory.provideWsOkHttpClient();
 
-          case 26: // com.kchat.data.repository.ChatRepository 
+          case 27: // com.kchat.data.repository.ChatRepository 
           return (T) RepositoryModule_ProvideChatRepositoryFactory.provideChatRepository(singletonCImpl.fakeChatRepositoryProvider.get(), singletonCImpl.networkChatRepositoryProvider.get());
 
-          case 27: // com.kchat.data.fake.FakeChatRepository 
+          case 28: // com.kchat.data.fake.FakeChatRepository 
           return (T) new FakeChatRepository(singletonCImpl.provideEmergencyWipeStoreProvider.get());
 
-          case 28: // com.kchat.data.repository.EmergencyWipeStore 
+          case 29: // com.kchat.data.repository.EmergencyWipeStore 
           return (T) RepositoryModule_ProvideEmergencyWipeStoreFactory.provideEmergencyWipeStore(singletonCImpl.dataStoreEmergencyWipeStoreProvider.get());
 
-          case 29: // com.kchat.data.network.emergency.DataStoreEmergencyWipeStore 
+          case 30: // com.kchat.data.network.emergency.DataStoreEmergencyWipeStore 
           return (T) new DataStoreEmergencyWipeStore(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
 
-          case 30: // com.kchat.data.network.repository.NetworkChatRepository 
+          case 31: // com.kchat.data.network.repository.NetworkChatRepository 
           return (T) new NetworkChatRepository(singletonCImpl.provideKChatApiProvider.get(), singletonCImpl.chatLocalDataSourceProvider.get(), singletonCImpl.provideEmergencyWipeStoreProvider.get(), singletonCImpl.provideTypingStateStoreProvider.get(), singletonCImpl.provideOkHttpClientProvider.get(), ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.provideApiBaseUrlProvider.get());
 
-          case 31: // com.kchat.data.repository.TypingStateStore 
+          case 32: // com.kchat.data.repository.TypingStateStore 
           return (T) RepositoryModule_ProvideTypingStateStoreFactory.provideTypingStateStore();
 
-          case 32: // @javax.inject.Named("apiBaseUrl") java.lang.String 
+          case 33: // @javax.inject.Named("apiBaseUrl") java.lang.String 
           return (T) NetworkModule_ProvideApiBaseUrlFactory.provideApiBaseUrl();
 
-          case 33: // com.kchat.data.repository.ContactsRepository 
+          case 34: // com.kchat.data.repository.ContactsRepository 
           return (T) RepositoryModule_ProvideContactsRepositoryFactory.provideContactsRepository(singletonCImpl.fakeContactsRepositoryProvider.get(), singletonCImpl.networkContactsRepositoryProvider.get());
 
-          case 34: // com.kchat.data.fake.FakeContactsRepository 
+          case 35: // com.kchat.data.fake.FakeContactsRepository 
           return (T) new FakeContactsRepository();
 
-          case 35: // com.kchat.data.network.repository.NetworkContactsRepository 
+          case 36: // com.kchat.data.network.repository.NetworkContactsRepository 
           return (T) new NetworkContactsRepository(singletonCImpl.provideKChatApiProvider.get(), singletonCImpl.provideEmergencyWipeStoreProvider.get(), singletonCImpl.provideApiBaseUrlProvider.get());
 
-          case 36: // com.kchat.data.repository.ActiveRoomTracker 
+          case 37: // com.kchat.data.repository.ActiveRoomTracker 
           return (T) RepositoryModule_ProvideActiveRoomTrackerFactory.provideActiveRoomTracker();
 
-          case 37: // com.kchat.data.repository.IncomingMessageNotifier 
+          case 38: // com.kchat.data.repository.IncomingMessageNotifier 
           return (T) RepositoryModule_ProvideIncomingMessageNotifierFactory.provideIncomingMessageNotifier(singletonCImpl.noOpIncomingMessageNotifierProvider.get(), singletonCImpl.incomingMessageNotifierImplProvider.get());
 
-          case 38: // com.kchat.data.fake.NoOpIncomingMessageNotifier 
+          case 39: // com.kchat.data.fake.NoOpIncomingMessageNotifier 
           return (T) new NoOpIncomingMessageNotifier();
 
-          case 39: // com.kchat.push.IncomingMessageNotifierImpl 
+          case 40: // com.kchat.push.IncomingMessageNotifierImpl 
           return (T) new IncomingMessageNotifierImpl(singletonCImpl.pushNotificationHelperProvider.get(), singletonCImpl.provideAppForegroundTrackerProvider.get(), singletonCImpl.provideActiveRoomTrackerProvider.get(), singletonCImpl.provideSettingsRepositoryProvider.get());
 
-          case 40: // com.kchat.data.repository.AppForegroundTracker 
+          case 41: // com.kchat.data.repository.AppForegroundTracker 
           return (T) RepositoryModule_ProvideAppForegroundTrackerFactory.provideAppForegroundTracker();
 
-          case 41: // com.kchat.data.repository.SettingsRepository 
+          case 42: // com.kchat.data.repository.SettingsRepository 
           return (T) RepositoryModule_ProvideSettingsRepositoryFactory.provideSettingsRepository(singletonCImpl.fakeSettingsRepositoryProvider.get(), singletonCImpl.networkSettingsRepositoryProvider.get());
 
-          case 42: // com.kchat.data.fake.FakeSettingsRepository 
+          case 43: // com.kchat.data.fake.FakeSettingsRepository 
           return (T) new FakeSettingsRepository(singletonCImpl.workManagerLocalCacheCleanupSchedulerProvider.get());
 
-          case 43: // com.kchat.work.WorkManagerLocalCacheCleanupScheduler 
+          case 44: // com.kchat.work.WorkManagerLocalCacheCleanupScheduler 
           return (T) new WorkManagerLocalCacheCleanupScheduler(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
 
-          case 44: // com.kchat.data.network.repository.NetworkSettingsRepository 
+          case 45: // com.kchat.data.network.repository.NetworkSettingsRepository 
           return (T) new NetworkSettingsRepository(singletonCImpl.provideKChatApiProvider.get(), singletonCImpl.provideTokenStoreProvider.get(), singletonCImpl.provideDeviceTokenStoreProvider.get(), singletonCImpl.workManagerLocalCacheCleanupSchedulerProvider.get(), singletonCImpl.provideApiBaseUrlProvider.get(), ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
 
-          case 45: // com.kchat.data.repository.AuthRepository 
+          case 46: // com.kchat.data.repository.AuthRepository 
           return (T) RepositoryModule_ProvideAuthRepositoryFactory.provideAuthRepository(singletonCImpl.fakeAuthRepositoryProvider.get(), singletonCImpl.networkAuthRepositoryProvider.get());
 
-          case 46: // com.kchat.data.fake.FakeAuthRepository 
+          case 47: // com.kchat.data.fake.FakeAuthRepository 
           return (T) new FakeAuthRepository(singletonCImpl.provideTokenStoreProvider.get(), singletonCImpl.provideSettingsRepositoryProvider.get(), singletonCImpl.providePinLockStoreProvider.get(), singletonCImpl.provideContactsRepositoryProvider.get(), singletonCImpl.provideEmergencyWipeStoreProvider.get());
 
-          case 47: // com.kchat.data.repository.PinLockStore 
+          case 48: // com.kchat.data.repository.PinLockStore 
           return (T) RepositoryModule_ProvidePinLockStoreFactory.providePinLockStore(singletonCImpl.fakePinLockStoreProvider.get(), singletonCImpl.dataStorePinLockStoreProvider.get());
 
-          case 48: // com.kchat.data.fake.FakePinLockStore 
+          case 49: // com.kchat.data.fake.FakePinLockStore 
           return (T) new FakePinLockStore();
 
-          case 49: // com.kchat.data.network.auth.DataStorePinLockStore 
+          case 50: // com.kchat.data.network.auth.DataStorePinLockStore 
           return (T) new DataStorePinLockStore(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
 
-          case 50: // com.kchat.data.network.repository.NetworkAuthRepository 
+          case 51: // com.kchat.data.network.repository.NetworkAuthRepository 
           return (T) new NetworkAuthRepository(singletonCImpl.provideKChatApiProvider.get(), singletonCImpl.provideTokenStoreProvider.get(), singletonCImpl.chatLocalDataSourceProvider.get(), singletonCImpl.provideRealtimeCoordinatorProvider.get(), singletonCImpl.provideSettingsRepositoryProvider.get(), singletonCImpl.providePinLockStoreProvider.get(), singletonCImpl.provideContactsRepositoryProvider.get(), singletonCImpl.provideEmergencyWipeStoreProvider.get());
 
-          case 51: // com.kchat.data.repository.SessionCoordinator 
+          case 52: // com.kchat.data.repository.SessionCoordinator 
           return (T) RepositoryModule_ProvideSessionCoordinatorFactory.provideSessionCoordinator(singletonCImpl.provideChatRepositoryProvider.get(), singletonCImpl.provideContactsRepositoryProvider.get(), singletonCImpl.provideRealtimeCoordinatorProvider.get(), singletonCImpl.provideSettingsRepositoryProvider.get(), singletonCImpl.workManagerLocalCacheCleanupSchedulerProvider.get(), singletonCImpl.providePushTokenSyncProvider.get(), singletonCImpl.fcmTokenHandlerProvider.get());
 
-          case 52: // com.kchat.data.repository.PushTokenSync 
+          case 53: // com.kchat.data.repository.PushTokenSync 
           return (T) RepositoryModule_ProvidePushTokenSyncFactory.providePushTokenSync(singletonCImpl.firebasePushTokenSyncProvider.get(), singletonCImpl.noOpPushTokenSyncProvider.get());
 
-          case 53: // com.kchat.push.FirebasePushTokenSync 
+          case 54: // com.kchat.push.FirebasePushTokenSync 
           return (T) new FirebasePushTokenSync(singletonCImpl.fcmTokenHandlerProvider.get());
 
-          case 54: // com.kchat.push.FcmTokenHandler 
+          case 55: // com.kchat.push.FcmTokenHandler 
           return (T) new FcmTokenHandler(singletonCImpl.providePushTokenRegistrarProvider.get(), singletonCImpl.provideTokenStoreProvider.get(), singletonCImpl.provideDeviceTokenStoreProvider.get());
 
-          case 55: // com.kchat.data.repository.PushTokenRegistrar 
+          case 56: // com.kchat.data.repository.PushTokenRegistrar 
           return (T) RepositoryModule_ProvidePushTokenRegistrarFactory.providePushTokenRegistrar(singletonCImpl.fakePushTokenRegistrarProvider.get(), singletonCImpl.networkPushTokenRegistrarProvider.get());
 
-          case 56: // com.kchat.data.fake.FakePushTokenRegistrar 
+          case 57: // com.kchat.data.fake.FakePushTokenRegistrar 
           return (T) new FakePushTokenRegistrar();
 
-          case 57: // com.kchat.data.network.repository.NetworkPushTokenRegistrar 
+          case 58: // com.kchat.data.network.repository.NetworkPushTokenRegistrar 
           return (T) new NetworkPushTokenRegistrar(singletonCImpl.provideKChatApiProvider.get());
 
-          case 58: // com.kchat.data.fake.NoOpPushTokenSync 
+          case 59: // com.kchat.data.fake.NoOpPushTokenSync 
           return (T) new NoOpPushTokenSync();
 
-          case 59: // com.kchat.data.repository.EmergencyWipeCoordinator 
+          case 60: // com.kchat.data.repository.EmergencyWipeCoordinator 
           return (T) RepositoryModule_ProvideEmergencyWipeCoordinatorFactory.provideEmergencyWipeCoordinator(singletonCImpl.emergencyWipeCoordinatorImplProvider.get());
 
-          case 60: // com.kchat.data.network.emergency.EmergencyWipeCoordinatorImpl 
+          case 61: // com.kchat.data.network.emergency.EmergencyWipeCoordinatorImpl 
           return (T) new EmergencyWipeCoordinatorImpl(singletonCImpl.provideChatRepositoryProvider.get(), singletonCImpl.provideContactsRepositoryProvider.get(), singletonCImpl.provideEmergencyWipeStoreProvider.get());
 
           default: throw new AssertionError(id);

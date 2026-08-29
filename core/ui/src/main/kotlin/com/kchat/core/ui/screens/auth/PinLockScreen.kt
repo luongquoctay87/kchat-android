@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -25,6 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.kchat.core.design.KChatDimens
 import com.kchat.core.model.PinRules
+import com.kchat.core.ui.AuthFormColumn
 import com.kchat.core.ui.KChatAuthScaffold
 import com.kchat.core.ui.components.KChatOtpField
 
@@ -40,9 +40,8 @@ fun PinLockScreen(
     BackHandler { }
 
     KChatAuthScaffold(modifier = modifier) { padding ->
-        Column(
+        AuthFormColumn(
             modifier = Modifier
-                .fillMaxSize()
                 .padding(padding)
                 .padding(KChatDimens.screenPadding),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -93,7 +92,7 @@ fun PinLockScreen(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(32.dp))
             TextButton(onClick = onLogout, enabled = !isVerifying) {
                 Text("Đăng xuất")
             }

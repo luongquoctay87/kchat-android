@@ -1,5 +1,9 @@
 package com.kchat.core.ui.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -34,14 +38,18 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import android.net.Uri
 import com.kchat.core.design.KChatDimens
 import com.kchat.core.model.ContactSummary
 import com.kchat.core.model.GroupMember
 import com.kchat.core.model.RoomSummary
 import com.kchat.core.ui.KChatDetailScaffold
+import com.kchat.core.ui.LocalTransientAppLeave
 import com.kchat.core.ui.components.KChatPrimaryButton
+import com.kchat.core.ui.runWithoutLock
 import com.kchat.core.ui.components.KChatSearchField
 import com.kchat.core.ui.components.KChatTextField
 import com.kchat.core.ui.components.UserAvatar
@@ -157,15 +165,41 @@ fun GroupInfoScreen(
     onLeft: () -> Unit,
     modifier: Modifier = Modifier,
     isChannel: Boolean = false,
+    avatarUrl: String? = null,
+    avatarUploading: Boolean = false,
+    myRole: String? = null,
+    onChangeAvatar: (suspend (Uri, String?, String?) -> Result<Unit>)? = null,
 ) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     var showAdd by remember { mutableStateOf(false) }
     var menuMemberId by remember { mutableStateOf<String?>(null) }
     var actionError by remember { mutableStateOf<String?>(null) }
     val me = members.find { it.isMe }
-    val isOwner = me?.role == "owner"
-    val canManage = !isChannel && (isOwner || me?.role == "admin")
+    val role = myRole ?: me?.role
+    val isOwner = role == "owner"
+    val canManage = !isChannel && (isOwner || role == "admin")
     val memberIds = members.map { it.id }.toSet()
+    val canChangeAvatar = canManage && onChangeAvatar != null
+    val transientLeave = LocalTransientAppLeave.current
+    val pickImage = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia(),
+    ) { uri ->
+        transientLeave?.end()
+        if (uri == null || onChangeAvatar == null) return@rememberLauncherForActivityResult
+        val mime = context.contentResolver.getType(uri)
+        scope.launch {
+            onChangeAvatar(uri, mime, null)
+                .onFailure { actionError = it.message }
+        }
+    }
+    val openAvatarPicker = {
+        transientLeave.runWithoutLock {
+            pickImage.launch(
+                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+            )
+        }
+    }
 
     KChatDetailScaffold(
         modifier = modifier,
@@ -177,25 +211,47 @@ fun GroupInfoScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .padding(KChatDimens.screenPadding),
-            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            UserAvatar(
-                name = if (isChannel) "#" else groupName,
-                size = KChatDimens.avatarLarge,
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = groupName,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-            )
-            if (isChannel) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Chỉ admin được gửi tin",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                UserAvatar(
+                    name = if (isChannel) "#" else groupName,
+                    size = KChatDimens.avatarLarge,
+                    imageUrl = avatarUrl,
+                    modifier = if (canChangeAvatar) {
+                        Modifier.clickable(
+                            enabled = !busy && !avatarUploading,
+                            onClick = openAvatarPicker,
+                        )
+                    } else {
+                        Modifier
+                    },
                 )
+                if (canChangeAvatar) {
+                    TextButton(
+                        onClick = openAvatarPicker,
+                        enabled = !busy && !avatarUploading,
+                    ) {
+                        Text(if (avatarUploading) "Đang tải ảnh..." else "Đổi ảnh nhóm")
+                    }
+                } else {
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+                Text(
+                    text = groupName,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                )
+                if (isChannel) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Chỉ admin được gửi tin",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
             Spacer(modifier = Modifier.height(16.dp))
             Row(
@@ -213,67 +269,100 @@ fun GroupInfoScreen(
                     }
                 }
             }
-            if (loading && members.isEmpty()) {
-                CircularProgressIndicator(modifier = Modifier.padding(24.dp))
-            }
-            LazyColumn(modifier = Modifier.weight(1f)) {
-                items(members, key = { it.id }) { member ->
-                    val canRemove = canManage &&
-                        !member.isMe &&
-                        member.role != "owner" &&
-                        (isOwner || member.role != "admin")
-                    Row(
+            when {
+                loading && members.isEmpty() -> {
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                            .weight(1f),
+                        horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        UserAvatar(name = member.name, isOnline = member.isOnline)
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(member.name, style = MaterialTheme.typography.bodyLarge)
-                            roleLabel(member.role)?.let {
-                                Text(
-                                    it,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
-                        if (canRemove) {
-                            IconButton(
-                                onClick = { menuMemberId = member.id },
-                                enabled = !busy,
+                        CircularProgressIndicator(modifier = Modifier.padding(24.dp))
+                    }
+                }
+                !loading && members.isEmpty() -> {
+                    Text(
+                        text = error?.takeIf { it.isNotBlank() }
+                            ?: "Chưa có thành viên",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (error.isNullOrBlank()) {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        } else {
+                            MaterialTheme.colorScheme.error
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .padding(vertical = 24.dp),
+                    )
+                }
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                    ) {
+                        items(members, key = { it.id }) { member ->
+                            val canRemove = canManage &&
+                                !member.isMe &&
+                                member.role != "owner" &&
+                                (isOwner || member.role != "admin")
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Icon(Icons.Default.MoreVert, contentDescription = "Tùy chọn")
+                                UserAvatar(name = member.name, isOnline = member.isOnline)
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(member.name, style = MaterialTheme.typography.bodyLarge)
+                                    roleLabel(member.role)?.let {
+                                        Text(
+                                            it,
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+                                if (canRemove) {
+                                    IconButton(
+                                        onClick = { menuMemberId = member.id },
+                                        enabled = !busy,
+                                    ) {
+                                        Icon(Icons.Default.MoreVert, contentDescription = "Tùy chọn")
+                                    }
+                                    DropdownMenu(
+                                        expanded = menuMemberId == member.id,
+                                        onDismissRequest = { menuMemberId = null },
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text("Xóa khỏi nhóm") },
+                                            onClick = {
+                                                menuMemberId = null
+                                                scope.launch {
+                                                    onRemoveMember(member.id)
+                                                        .onFailure { actionError = it.message }
+                                                }
+                                            },
+                                        )
+                                    }
+                                }
                             }
-                            DropdownMenu(
-                                expanded = menuMemberId == member.id,
-                                onDismissRequest = { menuMemberId = null },
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text("Xóa khỏi nhóm") },
-                                    onClick = {
-                                        menuMemberId = null
-                                        scope.launch {
-                                            onRemoveMember(member.id)
-                                                .onFailure { actionError = it.message }
-                                        }
-                                    },
-                                )
-                            }
+                            HorizontalDivider()
                         }
                     }
-                    HorizontalDivider()
                 }
             }
-            val message = actionError ?: error
+            val message = actionError ?: error?.takeIf { members.isNotEmpty() }
             if (!message.isNullOrBlank()) {
                 Text(
                     text = message,
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(bottom = 8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
                 )
             }
             if (!isChannel) {

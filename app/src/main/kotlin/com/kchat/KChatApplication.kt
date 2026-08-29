@@ -28,7 +28,7 @@ class KChatApplication : Application(), ImageLoaderFactory, Configuration.Provid
         if (BuildConfig.DEBUG) {
             Log.i(
                 "KChat",
-                "USE_FAKE_DATA=${BuildConfig.USE_FAKE_DATA} API=${BuildConfig.API_BASE_URL}",
+                "APP_ENV=${BuildConfig.APP_ENV} API=${BuildConfig.API_BASE_URL}",
             )
         }
     }

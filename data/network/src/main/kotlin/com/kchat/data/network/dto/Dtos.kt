@@ -92,6 +92,7 @@ data class RoomDto(
     @SerialName("my_role") val myRole: String? = null,
     @SerialName("is_muted") val isMuted: Boolean = false,
     @SerialName("muted_until_epoch_millis") val mutedUntilEpochMillis: Long? = null,
+    @SerialName("avatar_url") val avatarUrl: String? = null,
 )
 
 @Serializable
@@ -156,6 +157,9 @@ data class ContactDto(
     @SerialName("is_online") val isOnline: Boolean = false,
     val email: String = "",
     @SerialName("avatar_url") val avatarUrl: String? = null,
+    @SerialName("is_contact") val isContact: Boolean = false,
+    val username: String = "",
+    val phone: String = "",
 )
 
 @Serializable

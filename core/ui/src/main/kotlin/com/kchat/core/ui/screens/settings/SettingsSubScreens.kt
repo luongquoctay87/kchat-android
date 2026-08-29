@@ -37,12 +37,14 @@ import com.kchat.core.design.KChatAppearance
 import com.kchat.core.design.KChatDimens
 import com.kchat.core.design.ThemeMode
 import com.kchat.core.ui.KChatDetailScaffold
+import com.kchat.core.ui.LocalTransientAppLeave
 import com.kchat.core.ui.SettingsRow
 import com.kchat.core.ui.components.KChatPrimaryButton
 import com.kchat.core.ui.components.KChatSettingsCard
 import com.kchat.core.ui.components.KChatTextField
 import com.kchat.core.ui.components.RadioOptionRow
 import com.kchat.core.ui.components.UserAvatar
+import com.kchat.core.ui.runWithoutLock
 
 @Composable
 fun ProfileScreen(
@@ -63,9 +65,11 @@ fun ProfileScreen(
     var editedName by remember(displayName) { mutableStateOf(displayName) }
     var editedPhone by remember(phone) { mutableStateOf(phone) }
     val context = LocalContext.current
+    val transientLeave = LocalTransientAppLeave.current
     val pickImage = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
     ) { uri ->
+        transientLeave?.end()
         if (uri == null) return@rememberLauncherForActivityResult
         val mime = context.contentResolver.getType(uri)
         onChangeAvatar(uri, mime, null)
@@ -122,9 +126,11 @@ fun ProfileScreen(
             )
             TextButton(
                 onClick = {
-                    pickImage.launch(
-                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-                    )
+                    transientLeave.runWithoutLock {
+                        pickImage.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                        )
+                    }
                 },
                 enabled = canEdit,
             ) {

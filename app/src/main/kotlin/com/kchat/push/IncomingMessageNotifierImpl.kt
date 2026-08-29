@@ -45,7 +45,7 @@ class IncomingMessageNotifierImpl @Inject constructor(
     private fun formatBody(message: ChatMessage): String = when (message.type) {
         MessageType.Image -> "[Ảnh]"
         MessageType.File -> message.fileName?.takeIf { it.isNotBlank() }?.let { "[File] $it" } ?: "[File]"
-        MessageType.CallEvent -> "[Cuộc gọi]"
+        MessageType.CallEvent -> message.text.ifBlank { "[Cuộc gọi]" }
         MessageType.Bot -> message.text.ifBlank { "[Bot]" }
         else -> message.text.takeIf { it.isNotBlank() } ?: "Tin nhắn mới"
     }

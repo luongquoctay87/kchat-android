@@ -13,6 +13,14 @@ val hasGoogleServices = file("google-services.json").exists()
 val kchatProdApiUrl = "https://chat-api.safep4y.com/"
 val kchatProdWsUrl = "wss://chat-api.safep4y.com"
 
+/** Staging API. */
+val kchatStagingApiUrl = "https://chat-api-test.tayjava.net/"
+val kchatStagingWsUrl = "wss://chat-api-test.tayjava.net"
+
+/** Local BE (emulator → host :8864). */
+val kchatLocalApiUrl = "http://10.0.2.2:8864/"
+val kchatLocalWsUrl = "ws://10.0.2.2:8864"
+
 if (hasGoogleServices) {
     apply(plugin = "com.google.gms.google-services")
 }
@@ -33,6 +41,7 @@ android {
         // Placeholders — overridden per buildType
         buildConfigField("String", "API_BASE_URL", "\"https://chat-api.example.com/\"")
         buildConfigField("String", "WS_BASE_URL", "\"wss://chat-api.example.com\"")
+        buildConfigField("String", "APP_ENV", "\"prod\"")
         buildConfigField("boolean", "USE_FAKE_DATA", "false")
         buildConfigField("boolean", "FCM_ENABLED", hasGoogleServices.toString())
     }
@@ -48,19 +57,25 @@ android {
             )
             buildConfigField("String", "API_BASE_URL", "\"$kchatProdApiUrl\"")
             buildConfigField("String", "WS_BASE_URL", "\"$kchatProdWsUrl\"")
+            buildConfigField("String", "APP_ENV", "\"prod\"")
             buildConfigField("boolean", "USE_FAKE_DATA", "false")
             buildConfigField("boolean", "FCM_ENABLED", hasGoogleServices.toString())
         }
         debug {
-            // Emulator → host machine (k-chat-api :8864)
-            //buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8864/\"")
-            //buildConfigField("String", "WS_BASE_URL", "\"ws://10.0.2.2:8864\"")
-            buildConfigField("String", "API_BASE_URL", "\"https://chat-api-test.tayjava.net/\"")
-            buildConfigField("String", "WS_BASE_URL", "\"wss://chat-api-test.tayjava.net\"")
-
-            // -Pkchat.useFake=true to force fake repositories while debugging UI
-            val useFake = (project.findProperty("kchat.useFake") as String?)?.toBoolean() ?: false
-            buildConfigField("boolean", "USE_FAKE_DATA", useFake.toString())
+            // -Pkchat.env=local|staging (default staging)
+            val envRaw = (project.findProperty("kchat.env") as String?)?.lowercase()?.trim().orEmpty()
+            val env = when (envRaw) {
+                "local", "dev" -> "local"
+                else -> "staging"
+            }
+            val (apiUrl, wsUrl) = when (env) {
+                "local" -> kchatLocalApiUrl to kchatLocalWsUrl
+                else -> kchatStagingApiUrl to kchatStagingWsUrl
+            }
+            buildConfigField("String", "API_BASE_URL", "\"$apiUrl\"")
+            buildConfigField("String", "WS_BASE_URL", "\"$wsUrl\"")
+            buildConfigField("String", "APP_ENV", "\"$env\"")
+            buildConfigField("boolean", "USE_FAKE_DATA", "false")
             buildConfigField("boolean", "FCM_ENABLED", hasGoogleServices.toString())
         }
     }

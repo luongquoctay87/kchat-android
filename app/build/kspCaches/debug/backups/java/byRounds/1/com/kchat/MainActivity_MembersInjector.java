@@ -1,5 +1,6 @@
 package com.kchat;
 
+import com.kchat.data.repository.PinLockTransientLeave;
 import com.kchat.data.repository.PushNavigationStore;
 import com.kchat.push.PushNotificationHelper;
 import dagger.MembersInjector;
@@ -28,22 +29,28 @@ public final class MainActivity_MembersInjector implements MembersInjector<MainA
 
   private final Provider<PushNotificationHelper> pushNotificationHelperProvider;
 
+  private final Provider<PinLockTransientLeave> pinLockTransientLeaveProvider;
+
   public MainActivity_MembersInjector(Provider<PushNavigationStore> pushNavigationStoreProvider,
-      Provider<PushNotificationHelper> pushNotificationHelperProvider) {
+      Provider<PushNotificationHelper> pushNotificationHelperProvider,
+      Provider<PinLockTransientLeave> pinLockTransientLeaveProvider) {
     this.pushNavigationStoreProvider = pushNavigationStoreProvider;
     this.pushNotificationHelperProvider = pushNotificationHelperProvider;
+    this.pinLockTransientLeaveProvider = pinLockTransientLeaveProvider;
   }
 
   public static MembersInjector<MainActivity> create(
       Provider<PushNavigationStore> pushNavigationStoreProvider,
-      Provider<PushNotificationHelper> pushNotificationHelperProvider) {
-    return new MainActivity_MembersInjector(pushNavigationStoreProvider, pushNotificationHelperProvider);
+      Provider<PushNotificationHelper> pushNotificationHelperProvider,
+      Provider<PinLockTransientLeave> pinLockTransientLeaveProvider) {
+    return new MainActivity_MembersInjector(pushNavigationStoreProvider, pushNotificationHelperProvider, pinLockTransientLeaveProvider);
   }
 
   @Override
   public void injectMembers(MainActivity instance) {
     injectPushNavigationStore(instance, pushNavigationStoreProvider.get());
     injectPushNotificationHelper(instance, pushNotificationHelperProvider.get());
+    injectPinLockTransientLeave(instance, pinLockTransientLeaveProvider.get());
   }
 
   @InjectedFieldSignature("com.kchat.MainActivity.pushNavigationStore")
@@ -56,5 +63,11 @@ public final class MainActivity_MembersInjector implements MembersInjector<MainA
   public static void injectPushNotificationHelper(MainActivity instance,
       PushNotificationHelper pushNotificationHelper) {
     instance.pushNotificationHelper = pushNotificationHelper;
+  }
+
+  @InjectedFieldSignature("com.kchat.MainActivity.pinLockTransientLeave")
+  public static void injectPinLockTransientLeave(MainActivity instance,
+      PinLockTransientLeave pinLockTransientLeave) {
+    instance.pinLockTransientLeave = pinLockTransientLeave;
   }
 }

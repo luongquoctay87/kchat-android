@@ -10,6 +10,7 @@ import com.kchat.core.model.RoomMeta
 import com.kchat.core.model.RoomSummary
 import com.kchat.core.model.SearchResult
 import com.kchat.core.model.PinnedMessage
+import com.kchat.core.model.PinMessageRules
 import com.kchat.data.repository.ChatRepository
 import com.kchat.data.repository.EmergencyWipeStore
 import kotlinx.coroutines.flow.Flow
@@ -29,6 +30,14 @@ class FakeChatRepository @Inject constructor(
     private val messagesByRoom = FakeSampleData.rooms.associate { room ->
         room.id to MutableStateFlow(FakeSampleData.messagesForRoom(room.id))
     }.toMutableMap()
+    private val pinsByRoom = mutableMapOf<String, MutableList<PinnedMessage>>().apply {
+        put(
+            "room-2",
+            mutableListOf(
+                PinnedMessage(messageId = "pinned-room-2", text = FakeSampleData.pinnedMessage),
+            ),
+        )
+    }
 
     override fun observeRooms(): Flow<List<RoomSummary>> = rooms
 
@@ -165,23 +174,29 @@ class FakeChatRepository @Inject constructor(
     }
 
     override fun pinnedMessage(roomId: String): String? =
-        if (roomId == "room-2") FakeSampleData.pinnedMessage else null
+        pinsByRoom[roomId]?.firstOrNull()?.text
 
-    override suspend fun getPinnedMessage(roomId: String): Result<com.kchat.core.model.PinnedMessage?> =
-        Result.success(
-            pinnedMessage(roomId)?.let {
-                com.kchat.core.model.PinnedMessage(messageId = "pinned-$roomId", text = it)
-            },
-        )
+    override suspend fun getPinnedMessages(roomId: String): Result<List<PinnedMessage>> =
+        Result.success(pinsByRoom[roomId]?.toList().orEmpty())
 
-    override suspend fun pinMessage(roomId: String, messageId: String): Result<com.kchat.core.model.PinnedMessage> {
+    override suspend fun pinMessage(roomId: String, messageId: String): Result<PinnedMessage> {
+        val pins = pinsByRoom.getOrPut(roomId) { mutableListOf() }
+        pins.find { it.messageId == messageId }?.let { return Result.success(it) }
+        if (pins.size >= PinMessageRules.MAX_PER_ROOM) {
+            return Result.failure(IllegalStateException("Mỗi phòng chỉ ghim tối đa ${PinMessageRules.MAX_PER_ROOM} tin nhắn"))
+        }
         val text = messagesByRoom[roomId]?.value?.find { it.id == messageId }?.let {
             it.text.ifBlank { it.fileName ?: "Tin nhắn" }
         } ?: "Tin nhắn"
-        return Result.success(com.kchat.core.model.PinnedMessage(messageId, text))
+        val pin = PinnedMessage(messageId, text)
+        pins.add(0, pin)
+        return Result.success(pin)
     }
 
-    override suspend fun unpinMessage(roomId: String): Result<Unit> = Result.success(Unit)
+    override suspend fun unpinMessage(roomId: String, messageId: String): Result<Unit> {
+        pinsByRoom[roomId]?.removeAll { it.messageId == messageId }
+        return Result.success(Unit)
+    }
 
     override fun mentionUsers(query: String): List<MentionUser> =
         FakeSampleData.mentionUsers.filter {
@@ -232,8 +247,30 @@ class FakeChatRepository @Inject constructor(
         return Result.success(room)
     }
 
-    override suspend fun listMembers(roomId: String): Result<List<GroupMember>> =
-        Result.success(FakeSampleData.groupMembers)
+    override suspend fun listMembers(roomId: String): Result<List<GroupMember>> {
+        val room = rooms.value.find { it.id.equals(roomId, ignoreCase = true) }
+        if (room != null && !room.isGroup && !room.isChannel) {
+            val peerId = when {
+                roomId.equals("room-1", ignoreCase = true) -> "u-1"
+                roomId.startsWith("room-", ignoreCase = true) ->
+                    roomId.removePrefix("room-").removePrefix("ROOM-")
+                else -> "u-1"
+            }
+            val peer = FakeSampleData.contacts.find { it.id.equals(peerId, ignoreCase = true) }
+            return Result.success(
+                listOf(
+                    GroupMember(id = "me", name = "Bạn", username = "me", isMe = true),
+                    GroupMember(
+                        id = peerId,
+                        name = peer?.name ?: room.title,
+                        username = peer?.username.orEmpty(),
+                        isOnline = peer?.isOnline == true,
+                    ),
+                ),
+            )
+        }
+        return Result.success(FakeSampleData.groupMembers)
+    }
 
     override suspend fun addMembers(roomId: String, userIds: List<String>): Result<Unit> =
         Result.success(Unit)
@@ -244,6 +281,25 @@ class FakeChatRepository @Inject constructor(
     override suspend fun leaveRoom(roomId: String): Result<Unit> {
         rooms.update { list -> list.filterNot { it.id == roomId } }
         return Result.success(Unit)
+    }
+
+    override suspend fun updateGroupAvatar(
+        roomId: String,
+        uri: android.net.Uri,
+        mimeType: String?,
+        displayName: String?,
+    ): Result<RoomSummary> {
+        var updated: RoomSummary? = null
+        rooms.update { list ->
+            list.map { room ->
+                if (room.id != roomId) {
+                    room
+                } else {
+                    room.copy(avatarUrl = uri.toString()).also { updated = it }
+                }
+            }
+        }
+        return Result.success(updated ?: error("Room not found"))
     }
 
     override suspend fun updateRoomDisappearing(

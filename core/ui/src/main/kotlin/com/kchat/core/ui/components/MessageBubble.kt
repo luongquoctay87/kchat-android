@@ -25,7 +25,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,11 +32,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
@@ -45,7 +41,6 @@ import com.kchat.core.design.KChatColors
 import com.kchat.core.design.KChatDimens
 import com.kchat.core.model.ChatMessage
 import com.kchat.core.model.MessageType
-import java.util.regex.Pattern
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -207,9 +202,8 @@ private fun MessageTime(time: String, modifier: Modifier = Modifier) {
 private fun TextBubble(message: ChatMessage, onLongClick: (() -> Unit)?) {
     BubbleContainer(isMine = message.isMine, onLongClick = onLongClick) {
         message.replyTo?.let { ReplyQuoteBlock(it) }
-        Text(
-            text = rememberMentionAnnotatedText(message.text),
-            style = MaterialTheme.typography.bodyLarge,
+        MessageFormattedBody(
+            text = message.text,
             color = MaterialTheme.colorScheme.onSurface,
         )
         if (message.isEdited) {
@@ -222,41 +216,6 @@ private fun TextBubble(message: ChatMessage, onLongClick: (() -> Unit)?) {
         }
     }
 }
-
-@Composable
-private fun rememberMentionAnnotatedText(text: String): androidx.compose.ui.text.AnnotatedString {
-    val mentionColor = MaterialTheme.colorScheme.primary
-    return remember(text, mentionColor) {
-        buildAnnotatedString {
-            if (text.isEmpty()) return@buildAnnotatedString
-            val matcher = MENTION_PATTERN.matcher(text)
-            var last = 0
-            while (matcher.find()) {
-                val start = matcher.start()
-                val end = matcher.end()
-                if (start > last) {
-                    append(text.substring(last, start))
-                }
-                withStyle(
-                    SpanStyle(
-                        color = mentionColor,
-                        fontWeight = FontWeight.SemiBold,
-                    ),
-                ) {
-                    append(text.substring(start, end))
-                }
-                last = end
-            }
-            if (last < text.length) {
-                append(text.substring(last))
-            }
-        }
-    }
-}
-
-private val MENTION_PATTERN: Pattern =
-    Pattern.compile("(?<![\\w.])@[A-Za-z0-9_.]{1,64}\\b")
-
 @Composable
 private fun ImageBubble(message: ChatMessage, onClick: (() -> Unit)?, onLongClick: (() -> Unit)?) {
     BubbleContainer(

@@ -17,6 +17,17 @@ sealed interface KChatRoute {
         val isChannel: Boolean = false,
     ) : KChatRoute
     @Serializable data object Profile : KChatRoute
+    @Serializable data class ContactDetail(
+        val id: String,
+        val name: String,
+        val subtitle: String = "",
+        val isOnline: Boolean = false,
+        val email: String = "",
+        val avatarUrl: String? = null,
+        val username: String = "",
+        val phone: String = "",
+        val isContact: Boolean = true,
+    ) : KChatRoute
     @Serializable data object ChangePassword : KChatRoute
     @Serializable data object Appearance : KChatRoute
     @Serializable data object Notifications : KChatRoute

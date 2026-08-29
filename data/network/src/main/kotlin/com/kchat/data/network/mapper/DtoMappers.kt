@@ -40,6 +40,7 @@ internal fun RoomDto.toModel() = RoomSummary(
     myRole = myRole,
     isMuted = isMuted,
     mutedUntilEpochMs = mutedUntilEpochMillis,
+    avatarUrl = avatarUrl,
 )
 
 internal fun ContactDto.toModel() = ContactSummary(
@@ -49,6 +50,9 @@ internal fun ContactDto.toModel() = ContactSummary(
     isOnline = isOnline,
     email = email,
     avatarUrl = avatarUrl,
+    isContact = isContact,
+    username = username,
+    phone = phone,
 )
 
 internal fun RoomMemberDto.toModel() = GroupMember(

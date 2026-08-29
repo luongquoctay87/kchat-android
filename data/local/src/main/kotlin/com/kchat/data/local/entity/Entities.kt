@@ -18,6 +18,7 @@ data class RoomEntity(
     val myRole: String? = null,
     val isMuted: Boolean = false,
     val mutedUntilEpochMs: Long? = null,
+    val avatarUrl: String? = null,
     val updatedAt: Long,
 )
 

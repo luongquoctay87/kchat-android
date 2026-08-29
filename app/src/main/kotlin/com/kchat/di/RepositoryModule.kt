@@ -31,6 +31,7 @@ import com.kchat.data.repository.AppForegroundTracker
 import com.kchat.data.repository.IncomingMessageNotifier
 import com.kchat.data.repository.AuthRepository
 import com.kchat.data.repository.CallRepository
+import com.kchat.data.repository.PinLockTransientLeave
 import com.kchat.data.repository.CallSignalBus
 import com.kchat.data.repository.ChatRepository
 import com.kchat.data.repository.ContactsRepository
@@ -78,6 +79,10 @@ object RepositoryModule {
     @Provides
     @Singleton
     fun provideAppForegroundTracker(): AppForegroundTracker = AppForegroundTracker()
+
+    @Provides
+    @Singleton
+    fun providePinLockTransientLeave(): PinLockTransientLeave = PinLockTransientLeave()
 
     @Provides
     @Singleton

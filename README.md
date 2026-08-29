@@ -97,7 +97,7 @@ flowchart TB
 | `:data:repository` | Repository interfaces · session · realtime |
 | `:data:network` | REST client · WebSocket · mappers |
 | `:data:local` | Room entities · DAO · cache purge |
-| `:data:fake` | In-memory fake repos (`-Pkchat.useFake=true`) |
+| `:data:fake` | Sample / preview data (Compose previews) |
 
 ---
 
@@ -188,23 +188,18 @@ flowchart TB
 
 ### API URL
 
-File: [`app/build.gradle.kts`](app/build.gradle.kts) → `buildTypes.debug`
+File: [`app/build.gradle.kts`](app/build.gradle.kts) → `buildTypes.debug` / `release`
 
-| Môi trường | REST | WebSocket | Auth |
-|:-----------|:-----|:----------|:-----|
-| **Staging** *(mặc định)* | `https://chat-api-test.tayjava.net/` | `wss://chat-api-test.tayjava.net` | Đăng ký OTP |
-| **Local emulator** | `http://10.0.2.2:8864/` | `ws://10.0.2.2:8864` | `nguyenva` / `password` * |
+| Môi trường | Build | REST | WebSocket | Banner login |
+|:-----------|:------|:-----|:----------|:-------------|
+| **Staging** *(debug mặc định)* | `./gradlew :app:assembleDebug` | `https://chat-api-test.tayjava.net/` | `wss://chat-api-test.tayjava.net` | `Staging` |
+| **Local emulator** | `./gradlew :app:assembleDebug -Pkchat.env=local` | `http://10.0.2.2:8864/` | `ws://10.0.2.2:8864` | `Local` |
+| **Prod** | `./gradlew :app:assembleRelease` | `https://chat-api.safep4y.com/` | `wss://chat-api.safep4y.com` | *(ẩn)* |
 
-\* Cần seed DB local — xem [`../backend/README.md`](../backend/README.md)
-
-```kotlin
-// Chuyển sang local — comment staging, bật:
-buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8864/\"")
-buildConfigField("String", "WS_BASE_URL", "\"ws://10.0.2.2:8864\"")
-```
+\* Local cần BE `:8864` + seed — xem [`../backend/README.md`](../backend/README.md)
 
 Cleartext HTTP (`10.0.2.2`): [`network_security_config.xml`](app/src/main/res/xml/network_security_config.xml)  
-Thiết bị thật + BE local: thay `10.0.2.2` bằng IP LAN máy host.
+Thiết bị thật + BE local: sửa `kchatLocalApiUrl` trong `build.gradle.kts` thành IP LAN máy host.
 
 ### BuildConfig
 
@@ -212,7 +207,7 @@ Thiết bị thật + BE local: thay `10.0.2.2` bằng IP LAN máy host.
 |:------|:------|
 | `API_BASE_URL` | Base URL REST |
 | `WS_BASE_URL` | WebSocket host |
-| `USE_FAKE_DATA` | `-Pkchat.useFake=true` → bỏ qua API |
+| `APP_ENV` | `local` / `staging` / `prod` — điều khiển banner |
 | `FCM_ENABLED` | Tự `true` khi có `google-services.json` |
 
 ### FCM
@@ -242,9 +237,9 @@ flowchart LR
 ```bash
 cd k-chat/android
 
-./gradlew :app:assembleDebug                         # build APK
+./gradlew :app:assembleDebug                         # staging
+./gradlew :app:assembleDebug -Pkchat.env=local       # local BE :8864
 ./gradlew :app:installDebug                          # build + cài device
-./gradlew :app:assembleDebug -Pkchat.useFake=true    # UI fake, không API
 ./gradlew :app:assembleRelease                       # prod APK — chat-api.safep4y.com
 ```
 

@@ -25,10 +25,41 @@ object SampleData {
     )
 
     val contacts = listOf(
-        ContactSummary("u-1", "Trần Thị B", "Trực tuyến", isOnline = true, email = "b@company.com"),
-        ContactSummary("u-2", "Lê Văn C", "2 giờ trước", isOnline = false, email = "c@company.com"),
-        ContactSummary("u-3", "Phạm Văn D", "Hôm qua", isOnline = false, email = "d@company.com"),
-        ContactSummary("u-4", "Hoàng Thị E", "Trực tuyến", isOnline = true, email = "e@company.com"),
+        ContactSummary(
+            id = "u-1",
+            name = "Trần Thị B",
+            subtitle = "Trực tuyến",
+            isOnline = true,
+            email = "b@company.com",
+            username = "tranthib",
+            phone = "0901000001",
+        ),
+        ContactSummary(
+            id = "u-2",
+            name = "Lê Văn C",
+            subtitle = "2 giờ trước",
+            isOnline = false,
+            email = "c@company.com",
+            username = "levanc",
+            phone = "0901000002",
+        ),
+        ContactSummary(
+            id = "u-3",
+            name = "Phạm Văn D",
+            subtitle = "Hôm qua",
+            isOnline = false,
+            email = "d@company.com",
+            username = "phamvand",
+        ),
+        ContactSummary(
+            id = "u-4",
+            name = "Hoàng Thị E",
+            subtitle = "Trực tuyến",
+            isOnline = true,
+            email = "e@company.com",
+            username = "hoangthie",
+            phone = "0901000004",
+        ),
     )
 
     val mentionUsers = listOf(

@@ -33,7 +33,7 @@ class NetworkContactsRepository @Inject constructor(
         if (emergencyWipeStore.isActiveNow()) return
         try {
             contacts.value = api.getContacts().map { dto ->
-                dto.toModel().withAbsoluteAvatarUrl(apiBaseUrl)
+                dto.toModel().withAbsoluteAvatarUrl(apiBaseUrl).copy(isContact = true)
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
@@ -44,6 +44,22 @@ class NetworkContactsRepository @Inject constructor(
 
     override suspend fun openDirectChat(contactId: String): Result<String> = apiResult("Không mở được chat riêng") {
         api.createDirectRoom(CreateDirectRoomRequest(userId = contactId)).id
+    }
+
+    override suspend fun searchUsers(query: String): Result<List<ContactSummary>> = apiResult("Không tìm được người dùng") {
+        api.searchUsers(query.trim()).map { dto ->
+            dto.toModel().withAbsoluteAvatarUrl(apiBaseUrl)
+        }
+    }
+
+    override suspend fun addContact(userId: String): Result<Unit> = apiResult("Không thêm được vào danh bạ") {
+        api.addContact(userId)
+        refreshContacts()
+    }
+
+    override suspend fun removeContact(userId: String): Result<Unit> = apiResult("Không xóa được khỏi danh bạ") {
+        api.removeContact(userId)
+        contacts.value = contacts.value.filterNot { it.id == userId }
     }
 }
 

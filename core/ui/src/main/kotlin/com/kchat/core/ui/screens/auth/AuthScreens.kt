@@ -6,15 +6,18 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import com.kchat.core.ui.AuthFormColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.LockReset
@@ -25,9 +28,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.kchat.core.design.KChatDimens
@@ -52,39 +62,41 @@ fun LoginScreen(
     isLoading: Boolean = false,
     error: String? = null,
     infoMessage: String? = null,
-    /** Debug-only: e.g. "API http://10.0.2.2:8864/" or "FAKE DATA" */
+    /** Debug-only env badge: "Local" / "Staging"; null on prod. */
     debugBackendLabel: String? = null,
     onIdentifierChange: (String) -> Unit = {},
     onPasswordChange: (String) -> Unit = {},
     onLogin: () -> Unit = onLoginSuccess,
 ) {
+    val focusManager = LocalFocusManager.current
+    val passwordFocusRequester = remember { FocusRequester() }
+    val keyboardOpen = WindowInsets.ime.asPaddingValues().calculateBottomPadding() > 0.dp
+
     KChatAuthScaffold(modifier = modifier) { padding ->
-        Column(
+        AuthFormColumn(
             modifier = Modifier
-                .fillMaxSize()
                 .padding(padding)
-                .padding(KChatDimens.screenPadding)
-                .verticalScroll(rememberScrollState()),
+                .padding(horizontal = KChatDimens.screenPadding)
+                .padding(vertical = if (keyboardOpen) 8.dp else KChatDimens.screenPadding),
             horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
         ) {
-            Spacer(modifier = Modifier.height(40.dp))
-            KChatWordmark(size = WordmarkSize.Hero)
-            debugBackendLabel?.let { label ->
+            KChatWordmark(
+                size = if (keyboardOpen) WordmarkSize.Compact else WordmarkSize.Hero,
+            )
+            if (!keyboardOpen) {
+                debugBackendLabel?.let { label ->
+                    Spacer(modifier = Modifier.height(12.dp))
+                    EnvBadge(label = label)
+                }
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelSmall,
+                    text = "Đăng nhập để tiếp tục trò chuyện",
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                 )
             }
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Đăng nhập để tiếp tục trò chuyện",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-            )
             infoMessage?.let {
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
@@ -95,11 +107,15 @@ fun LoginScreen(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(if (keyboardOpen) 16.dp else 28.dp))
             KChatTextField(
                 value = identifier,
                 onValueChange = onIdentifierChange,
-                label = "Email hoặc tên đăng nhập",
+                label = "Email / tên đăng nhập",
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(
+                    onNext = { runCatching { passwordFocusRequester.requestFocus() } },
+                ),
             )
             Spacer(modifier = Modifier.height(12.dp))
             KChatTextField(
@@ -107,6 +123,16 @@ fun LoginScreen(
                 onValueChange = onPasswordChange,
                 label = "Mật khẩu",
                 isPassword = true,
+                modifier = Modifier.focusRequester(passwordFocusRequester),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(
+                    onDone = {
+                        focusManager.clearFocus()
+                        if (!isLoading && identifier.isNotBlank() && password.isNotBlank()) {
+                            onLogin()
+                        }
+                    },
+                ),
             )
             error?.let {
                 Spacer(modifier = Modifier.height(10.dp))
@@ -118,13 +144,13 @@ fun LoginScreen(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
             KChatPrimaryButton(
                 text = if (isLoading) "Đang đăng nhập..." else "Đăng nhập",
                 onClick = onLogin,
                 enabled = !isLoading,
             )
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             Row(
                 horizontalArrangement = Arrangement.Center,
                 modifier = Modifier.fillMaxWidth(),
@@ -191,12 +217,10 @@ fun RegisterScreen(
         title = "Đăng ký",
         onBack = onLogin,
     ) { padding ->
-        Column(
+        AuthFormColumn(
             modifier = Modifier
-                .fillMaxSize()
                 .padding(padding)
-                .padding(KChatDimens.screenPadding)
-                .verticalScroll(rememberScrollState()),
+                .padding(KChatDimens.screenPadding),
         ) {
             Text(
                 text = "Tạo tài khoản mới",
@@ -351,12 +375,10 @@ fun ForgotPasswordScreen(
         title = "Quên mật khẩu",
         onBack = onBack,
     ) { padding ->
-        Column(
+        AuthFormColumn(
             modifier = Modifier
-                .fillMaxSize()
                 .padding(padding)
-                .padding(KChatDimens.screenPadding)
-                .verticalScroll(rememberScrollState()),
+                .padding(KChatDimens.screenPadding),
         ) {
             Spacer(modifier = Modifier.height(8.dp))
             AuthIconBadge(Icons.Outlined.LockReset)
@@ -414,12 +436,10 @@ fun VerifyResetOtpScreen(
         title = "Nhập mã OTP",
         onBack = onBack,
     ) { padding ->
-        Column(
+        AuthFormColumn(
             modifier = Modifier
-                .fillMaxSize()
                 .padding(padding)
-                .padding(KChatDimens.screenPadding)
-                .verticalScroll(rememberScrollState()),
+                .padding(KChatDimens.screenPadding),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Spacer(modifier = Modifier.height(8.dp))
@@ -515,12 +535,10 @@ fun ResetPasswordScreen(
     val canSubmit = PasswordRules.validate(password) == null && password == confirm
 
     KChatAuthScaffold(modifier = modifier) { padding ->
-        Column(
+        AuthFormColumn(
             modifier = Modifier
-                .fillMaxSize()
                 .padding(padding)
-                .padding(KChatDimens.screenPadding)
-                .verticalScroll(rememberScrollState()),
+                .padding(KChatDimens.screenPadding),
         ) {
             Spacer(modifier = Modifier.height(16.dp))
             AuthIconBadge(Icons.Outlined.LockReset)
@@ -557,6 +575,32 @@ fun ResetPasswordScreen(
             )
         }
     }
+}
+
+@Composable
+private fun EnvBadge(label: String) {
+    val isStaging = label.equals("Staging", ignoreCase = true)
+    val container = if (isStaging) {
+        Color(0xFFFFF3E0) // amber soft
+    } else {
+        Color(0xFFE8F5E9) // green soft (Local)
+    }
+    val content = if (isStaging) {
+        Color(0xFFE65100)
+    } else {
+        Color(0xFF1B5E20)
+    }
+    Text(
+        text = label.uppercase(),
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.Bold,
+        color = content,
+        textAlign = TextAlign.Center,
+        modifier = Modifier
+            .clip(RoundedCornerShape(999.dp))
+            .background(container)
+            .padding(horizontal = 14.dp, vertical = 6.dp),
+    )
 }
 
 @Composable

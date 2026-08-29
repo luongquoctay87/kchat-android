@@ -4,6 +4,7 @@ import com.kchat.data.repository.ActiveRoomTracker;
 import com.kchat.data.repository.AppForegroundTracker;
 import com.kchat.data.repository.AuthRepository;
 import com.kchat.data.repository.PinLockStore;
+import com.kchat.data.repository.PinLockTransientLeave;
 import com.kchat.data.repository.RealtimeCoordinator;
 import com.kchat.data.repository.SessionCoordinator;
 import com.kchat.data.repository.TokenStore;
@@ -40,6 +41,8 @@ public final class SessionViewModel_Factory implements Factory<SessionViewModel>
 
   private final Provider<PinLockStore> pinLockStoreProvider;
 
+  private final Provider<PinLockTransientLeave> pinLockTransientLeaveProvider;
+
   private final Provider<AppForegroundTracker> appForegroundTrackerProvider;
 
   private final Provider<ActiveRoomTracker> activeRoomTrackerProvider;
@@ -49,6 +52,7 @@ public final class SessionViewModel_Factory implements Factory<SessionViewModel>
       Provider<SessionCoordinator> sessionCoordinatorProvider,
       Provider<RealtimeCoordinator> realtimeCoordinatorProvider,
       Provider<PinLockStore> pinLockStoreProvider,
+      Provider<PinLockTransientLeave> pinLockTransientLeaveProvider,
       Provider<AppForegroundTracker> appForegroundTrackerProvider,
       Provider<ActiveRoomTracker> activeRoomTrackerProvider) {
     this.authRepositoryProvider = authRepositoryProvider;
@@ -56,13 +60,14 @@ public final class SessionViewModel_Factory implements Factory<SessionViewModel>
     this.sessionCoordinatorProvider = sessionCoordinatorProvider;
     this.realtimeCoordinatorProvider = realtimeCoordinatorProvider;
     this.pinLockStoreProvider = pinLockStoreProvider;
+    this.pinLockTransientLeaveProvider = pinLockTransientLeaveProvider;
     this.appForegroundTrackerProvider = appForegroundTrackerProvider;
     this.activeRoomTrackerProvider = activeRoomTrackerProvider;
   }
 
   @Override
   public SessionViewModel get() {
-    return newInstance(authRepositoryProvider.get(), tokenStoreProvider.get(), sessionCoordinatorProvider.get(), realtimeCoordinatorProvider.get(), pinLockStoreProvider.get(), appForegroundTrackerProvider.get(), activeRoomTrackerProvider.get());
+    return newInstance(authRepositoryProvider.get(), tokenStoreProvider.get(), sessionCoordinatorProvider.get(), realtimeCoordinatorProvider.get(), pinLockStoreProvider.get(), pinLockTransientLeaveProvider.get(), appForegroundTrackerProvider.get(), activeRoomTrackerProvider.get());
   }
 
   public static SessionViewModel_Factory create(Provider<AuthRepository> authRepositoryProvider,
@@ -70,15 +75,16 @@ public final class SessionViewModel_Factory implements Factory<SessionViewModel>
       Provider<SessionCoordinator> sessionCoordinatorProvider,
       Provider<RealtimeCoordinator> realtimeCoordinatorProvider,
       Provider<PinLockStore> pinLockStoreProvider,
+      Provider<PinLockTransientLeave> pinLockTransientLeaveProvider,
       Provider<AppForegroundTracker> appForegroundTrackerProvider,
       Provider<ActiveRoomTracker> activeRoomTrackerProvider) {
-    return new SessionViewModel_Factory(authRepositoryProvider, tokenStoreProvider, sessionCoordinatorProvider, realtimeCoordinatorProvider, pinLockStoreProvider, appForegroundTrackerProvider, activeRoomTrackerProvider);
+    return new SessionViewModel_Factory(authRepositoryProvider, tokenStoreProvider, sessionCoordinatorProvider, realtimeCoordinatorProvider, pinLockStoreProvider, pinLockTransientLeaveProvider, appForegroundTrackerProvider, activeRoomTrackerProvider);
   }
 
   public static SessionViewModel newInstance(AuthRepository authRepository, TokenStore tokenStore,
       SessionCoordinator sessionCoordinator, RealtimeCoordinator realtimeCoordinator,
-      PinLockStore pinLockStore, AppForegroundTracker appForegroundTracker,
-      ActiveRoomTracker activeRoomTracker) {
-    return new SessionViewModel(authRepository, tokenStore, sessionCoordinator, realtimeCoordinator, pinLockStore, appForegroundTracker, activeRoomTracker);
+      PinLockStore pinLockStore, PinLockTransientLeave pinLockTransientLeave,
+      AppForegroundTracker appForegroundTracker, ActiveRoomTracker activeRoomTracker) {
+    return new SessionViewModel(authRepository, tokenStore, sessionCoordinator, realtimeCoordinator, pinLockStore, pinLockTransientLeave, appForegroundTracker, activeRoomTracker);
   }
 }

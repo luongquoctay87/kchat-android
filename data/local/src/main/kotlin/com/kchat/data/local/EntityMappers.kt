@@ -23,6 +23,7 @@ internal object EntityMappers {
         myRole = myRole,
         isMuted = isMuted,
         mutedUntilEpochMs = mutedUntilEpochMs,
+        avatarUrl = avatarUrl,
         updatedAt = updatedAt,
     )
 
@@ -40,6 +41,7 @@ internal object EntityMappers {
         myRole = myRole,
         isMuted = isMuted,
         mutedUntilEpochMs = mutedUntilEpochMs,
+        avatarUrl = avatarUrl,
     )
 
     fun ChatMessage.toEntity(roomId: String, createdAt: Long = createdAtMillis ?: System.currentTimeMillis()) = MessageEntity(

@@ -9,7 +9,7 @@ import com.kchat.data.local.entity.RoomEntity
 
 @Database(
     entities = [RoomEntity::class, MessageEntity::class],
-    version = 6,
+    version = 7,
     exportSchema = false,
 )
 abstract class KChatDatabase : RoomDatabase() {

@@ -37,13 +37,13 @@ public final class KChatDatabase_Impl extends KChatDatabase {
   @Override
   @NonNull
   protected SupportSQLiteOpenHelper createOpenHelper(@NonNull final DatabaseConfiguration config) {
-    final SupportSQLiteOpenHelper.Callback _openCallback = new RoomOpenHelper(config, new RoomOpenHelper.Delegate(6) {
+    final SupportSQLiteOpenHelper.Callback _openCallback = new RoomOpenHelper(config, new RoomOpenHelper.Delegate(7) {
       @Override
       public void createAllTables(@NonNull final SupportSQLiteDatabase db) {
-        db.execSQL("CREATE TABLE IF NOT EXISTS `rooms` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `preview` TEXT NOT NULL, `time` TEXT NOT NULL, `unreadCount` INTEGER NOT NULL, `isOnline` INTEGER NOT NULL, `isChannel` INTEGER NOT NULL, `isGroup` INTEGER NOT NULL, `memberCount` INTEGER NOT NULL, `disappearingAfterSeconds` INTEGER, `myRole` TEXT, `isMuted` INTEGER NOT NULL, `mutedUntilEpochMs` INTEGER, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))");
+        db.execSQL("CREATE TABLE IF NOT EXISTS `rooms` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `preview` TEXT NOT NULL, `time` TEXT NOT NULL, `unreadCount` INTEGER NOT NULL, `isOnline` INTEGER NOT NULL, `isChannel` INTEGER NOT NULL, `isGroup` INTEGER NOT NULL, `memberCount` INTEGER NOT NULL, `disappearingAfterSeconds` INTEGER, `myRole` TEXT, `isMuted` INTEGER NOT NULL, `mutedUntilEpochMs` INTEGER, `avatarUrl` TEXT, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))");
         db.execSQL("CREATE TABLE IF NOT EXISTS `messages` (`id` TEXT NOT NULL, `roomId` TEXT NOT NULL, `type` TEXT NOT NULL, `text` TEXT NOT NULL, `fileName` TEXT, `fileSize` TEXT, `imageLabel` TEXT, `mediaUrl` TEXT, `senderName` TEXT, `isMine` INTEGER NOT NULL, `time` TEXT NOT NULL, `replyAuthor` TEXT, `replyText` TEXT, `replyMessageId` TEXT, `replyMediaUrl` TEXT, `replyPreviewType` TEXT, `reactionsJson` TEXT, `isRead` INTEGER NOT NULL, `isEdited` INTEGER NOT NULL, `botTitle` TEXT, `botService` TEXT, `createdAt` INTEGER NOT NULL, PRIMARY KEY(`id`))");
         db.execSQL("CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)");
-        db.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '8f299ad653c2d5d8d1ba6db0d9336fa8')");
+        db.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '4dcb11c691e371e4bb20e8b780d5d02b')");
       }
 
       @Override
@@ -93,7 +93,7 @@ public final class KChatDatabase_Impl extends KChatDatabase {
       @NonNull
       public RoomOpenHelper.ValidationResult onValidateSchema(
           @NonNull final SupportSQLiteDatabase db) {
-        final HashMap<String, TableInfo.Column> _columnsRooms = new HashMap<String, TableInfo.Column>(14);
+        final HashMap<String, TableInfo.Column> _columnsRooms = new HashMap<String, TableInfo.Column>(15);
         _columnsRooms.put("id", new TableInfo.Column("id", "TEXT", true, 1, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsRooms.put("title", new TableInfo.Column("title", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsRooms.put("preview", new TableInfo.Column("preview", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
@@ -107,6 +107,7 @@ public final class KChatDatabase_Impl extends KChatDatabase {
         _columnsRooms.put("myRole", new TableInfo.Column("myRole", "TEXT", false, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsRooms.put("isMuted", new TableInfo.Column("isMuted", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsRooms.put("mutedUntilEpochMs", new TableInfo.Column("mutedUntilEpochMs", "INTEGER", false, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsRooms.put("avatarUrl", new TableInfo.Column("avatarUrl", "TEXT", false, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsRooms.put("updatedAt", new TableInfo.Column("updatedAt", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         final HashSet<TableInfo.ForeignKey> _foreignKeysRooms = new HashSet<TableInfo.ForeignKey>(0);
         final HashSet<TableInfo.Index> _indicesRooms = new HashSet<TableInfo.Index>(0);
@@ -151,7 +152,7 @@ public final class KChatDatabase_Impl extends KChatDatabase {
         }
         return new RoomOpenHelper.ValidationResult(true, null);
       }
-    }, "8f299ad653c2d5d8d1ba6db0d9336fa8", "4a20d4db26bf3c4fec5ea4eb280784ed");
+    }, "4dcb11c691e371e4bb20e8b780d5d02b", "5deef8d7f1f4f23799625c04f70ee85a");
     final SupportSQLiteOpenHelper.Configuration _sqliteConfig = SupportSQLiteOpenHelper.Configuration.builder(config.context).name(config.name).callback(_openCallback).build();
     final SupportSQLiteOpenHelper _helper = config.sqliteOpenHelperFactory.create(_sqliteConfig);
     return _helper;

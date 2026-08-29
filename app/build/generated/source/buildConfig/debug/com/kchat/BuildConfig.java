@@ -12,6 +12,8 @@ public final class BuildConfig {
   // Field from build type: debug
   public static final String API_BASE_URL = "https://chat-api-test.tayjava.net/";
   // Field from build type: debug
+  public static final String APP_ENV = "staging";
+  // Field from build type: debug
   public static final boolean FCM_ENABLED = true;
   // Field from build type: debug
   public static final boolean USE_FAKE_DATA = false;

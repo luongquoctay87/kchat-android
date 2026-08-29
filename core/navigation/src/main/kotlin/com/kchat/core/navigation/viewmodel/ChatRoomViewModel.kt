@@ -7,12 +7,14 @@ import androidx.navigation.toRoute
 import com.kchat.core.model.ChatMessage
 import com.kchat.core.model.MentionUser
 import com.kchat.core.model.PinnedMessage
+import com.kchat.core.model.PinMessageRules
 import com.kchat.core.model.ReadReceipt
 import com.kchat.core.model.ReplyQuote
 import com.kchat.core.model.RoomMeta
 import com.kchat.core.navigation.KChatRoute
 import com.kchat.data.repository.ActiveRoomTracker
 import com.kchat.data.repository.ChatRepository
+import com.kchat.data.repository.ContactsRepository
 import com.kchat.data.repository.RealtimeCoordinator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -21,7 +23,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -30,6 +34,7 @@ import javax.inject.Inject
 class ChatRoomViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val chatRepository: ChatRepository,
+    private val contactsRepository: ContactsRepository,
     private val activeRoomTracker: ActiveRoomTracker,
     private val realtimeCoordinator: RealtimeCoordinator,
 ) : ViewModel() {
@@ -42,8 +47,8 @@ class ChatRoomViewModel @Inject constructor(
     val roomMeta: StateFlow<RoomMeta> = chatRepository.observeRoomMeta(roomId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RoomMeta())
 
-    private val _pinned = MutableStateFlow<PinnedMessage?>(null)
-    val pinned: StateFlow<PinnedMessage?> = _pinned.asStateFlow()
+    private val _pinned = MutableStateFlow<List<PinnedMessage>>(emptyList())
+    val pinned: StateFlow<List<PinnedMessage>> = _pinned.asStateFlow()
 
     private val _readReceipts = MutableStateFlow<List<ReadReceipt>>(emptyList())
     val readReceipts: StateFlow<List<ReadReceipt>> = _readReceipts.asStateFlow()
@@ -60,6 +65,21 @@ class ChatRoomViewModel @Inject constructor(
     val restoreReply: StateFlow<ReplyQuote?> = _restoreReply.asStateFlow()
 
     private val mentionCandidates = MutableStateFlow<List<MentionUser>>(emptyList())
+    private val peerUserId = MutableStateFlow<String?>(null)
+
+    /** True when this is a 1-1 chat and the peer is not yet in the viewer's address book. */
+    val canAddPeerToContacts: StateFlow<Boolean> = combine(
+        roomMeta,
+        peerUserId,
+        contactsRepository.observeContacts(),
+    ) { meta, peerId, contacts ->
+        if (meta.isGroup || meta.isChannel || peerId.isNullOrBlank()) return@combine false
+        contacts.none { it.id.equals(peerId, ignoreCase = true) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    private val _infoMessage = MutableStateFlow<String?>(null)
+    val infoMessage: StateFlow<String?> = _infoMessage.asStateFlow()
+
     private var typingHeartbeatJob: Job? = null
     private var isComposing = false
 
@@ -70,6 +90,7 @@ class ChatRoomViewModel @Inject constructor(
             runCatching { chatRepository.markRoomRead(roomId) }
             refreshPinned()
             refreshMentionCandidates()
+            runCatching { contactsRepository.refreshContacts() }
         }
     }
 
@@ -132,9 +153,10 @@ class ChatRoomViewModel @Inject constructor(
         viewModelScope.launch {
             chatRepository.editMessage(roomId, messageId, text)
                 .onSuccess { updated ->
-                    val pin = _pinned.value
-                    if (pin?.messageId == messageId) {
-                        _pinned.value = pin.copy(text = updated.text)
+                    _pinned.update { current ->
+                        current.map { pin ->
+                            if (pin.messageId == messageId) pin.copy(text = updated.text) else pin
+                        }
                     }
                 }
         }
@@ -144,9 +166,7 @@ class ChatRoomViewModel @Inject constructor(
         viewModelScope.launch {
             chatRepository.deleteMessage(roomId, messageId)
                 .onSuccess {
-                    if (_pinned.value?.messageId == messageId) {
-                        _pinned.value = null
-                    }
+                    _pinned.update { current -> current.filterNot { it.messageId == messageId } }
                 }
         }
     }
@@ -168,25 +188,73 @@ class ChatRoomViewModel @Inject constructor(
 
     fun pinMessage(messageId: String) {
         viewModelScope.launch {
+            if (_pinned.value.any { it.messageId == messageId }) return@launch
+            if (_pinned.value.size >= PinMessageRules.MAX_PER_ROOM) {
+                _actionError.value = "Mỗi phòng chỉ ghim tối đa ${PinMessageRules.MAX_PER_ROOM} tin nhắn"
+                return@launch
+            }
+            val preview = messages.value.find { it.id == messageId }?.let { msg ->
+                msg.text.ifBlank { msg.fileName ?: "Tin nhắn" }
+            } ?: "Tin nhắn"
+            val optimistic = PinnedMessage(messageId, preview)
+            _pinned.update { listOf(optimistic) + it.filterNot { pin -> pin.messageId == messageId } }
+
             chatRepository.pinMessage(roomId, messageId)
-                .onSuccess { _pinned.value = it }
+                .onSuccess { pinned ->
+                    _pinned.update { current ->
+                        listOf(pinned) + current.filterNot { it.messageId == pinned.messageId }
+                    }
+                }
+                .onFailure { error ->
+                    _pinned.update { current -> current.filterNot { it.messageId == messageId } }
+                    _actionError.value = error.message ?: "Không ghim được tin nhắn"
+                }
         }
     }
 
-    fun unpinMessage() {
+    fun unpinMessage(messageId: String) {
         viewModelScope.launch {
-            chatRepository.unpinMessage(roomId)
-                .onSuccess { _pinned.value = null }
+            val previous = _pinned.value
+            _pinned.update { current -> current.filterNot { it.messageId == messageId } }
+            chatRepository.unpinMessage(roomId, messageId)
+                .onFailure { error ->
+                    _pinned.value = previous
+                    _actionError.value = error.message ?: "Không bỏ ghim được"
+                }
         }
+    }
+
+    private suspend fun refreshPinned() {
+        chatRepository.getPinnedMessages(roomId)
+            .onSuccess { _pinned.value = it }
     }
 
     fun clearActionError() {
         _actionError.value = null
     }
 
+    fun clearInfoMessage() {
+        _infoMessage.value = null
+    }
+
     fun clearRestoreDraft() {
         _restoreDraft.value = null
         _restoreReply.value = null
+    }
+
+    fun addPeerToContacts() {
+        val peerId = peerUserId.value?.trim().orEmpty()
+        if (peerId.isEmpty()) return
+        viewModelScope.launch {
+            contactsRepository.addContact(peerId)
+                .onSuccess {
+                    _infoMessage.value = "Đã thêm vào danh bạ"
+                    runCatching { contactsRepository.refreshContacts() }
+                }
+                .onFailure { error ->
+                    _actionError.value = error.message ?: "Không thêm được vào danh bạ"
+                }
+        }
     }
 
     fun setDisappearing(seconds: Int?) {
@@ -209,14 +277,10 @@ class ChatRoomViewModel @Inject constructor(
         }
     }
 
-    private suspend fun refreshPinned() {
-        chatRepository.getPinnedMessage(roomId)
-            .onSuccess { _pinned.value = it }
-    }
-
     private suspend fun refreshMentionCandidates() {
         chatRepository.listMembers(roomId)
             .onSuccess { members ->
+                peerUserId.value = members.firstOrNull { !it.isMe }?.id
                 mentionCandidates.value = members
                     .filterNot { it.isMe }
                     .mapNotNull { member ->

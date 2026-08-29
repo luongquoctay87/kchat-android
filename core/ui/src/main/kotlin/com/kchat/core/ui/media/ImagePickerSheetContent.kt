@@ -34,7 +34,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import coil.compose.AsyncImage
+import com.kchat.core.ui.LocalTransientAppLeave
 import com.kchat.core.ui.components.SheetCancelRow
+import com.kchat.core.ui.runWithoutLock
 
 @Composable
 fun ImagePickerSheetContent(
@@ -52,6 +54,7 @@ fun ImagePickerSheetContent(
 
     var images by remember { mutableStateOf<List<Uri>?>(null) }
     var permissionDenied by remember { mutableStateOf(false) }
+    val transientLeave = LocalTransientAppLeave.current
 
     fun loadImages() {
         images = RecentImages.query(context)
@@ -60,6 +63,7 @@ fun ImagePickerSheetContent(
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
     ) { granted ->
+        transientLeave?.end()
         if (granted) {
             permissionDenied = false
             loadImages()
@@ -73,7 +77,9 @@ fun ImagePickerSheetContent(
         when {
             ContextCompat.checkSelfPermission(context, readPermission) ==
                 PackageManager.PERMISSION_GRANTED -> loadImages()
-            else -> permissionLauncher.launch(readPermission)
+            else -> transientLeave.runWithoutLock {
+                permissionLauncher.launch(readPermission)
+            }
         }
     }
 

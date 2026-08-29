@@ -13,14 +13,18 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Reply
+import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,23 +35,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil.compose.SubcomposeAsyncImage
+import coil.request.ImageRequest
 import com.kchat.core.design.KChatColors
 import com.kchat.core.design.KChatDimens
 import com.kchat.core.model.MentionUser
+import com.kchat.core.model.MessageType
 import com.kchat.core.model.ReactionCount
 import com.kchat.core.model.ReadReceipt
-import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.filled.BrokenImage
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import coil.compose.SubcomposeAsyncImage
-import coil.request.ImageRequest
-import com.kchat.core.model.MessageType
 import com.kchat.core.model.ReplyQuote
 
 @Composable
@@ -139,52 +140,6 @@ private fun PreviewBar(
         }
         IconButton(onClick = onDismiss) {
             Icon(Icons.Default.Close, contentDescription = dismissContentDescription)
-        }
-    }
-}
-
-@Composable
-fun PinnedBanner(
-    text: String,
-    onClick: (() -> Unit)? = null,
-    onDismiss: (() -> Unit)?,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .then(
-                if (onClick != null) {
-                    Modifier.clickable(onClick = onClick)
-                } else {
-                    Modifier
-                },
-            ),
-        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
-        tonalElevation = 0.dp,
-    ) {
-        Row(
-            modifier = Modifier.padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                Icons.Default.PushPin,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(end = 8.dp),
-            )
-            Text(
-                text = text,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.weight(1f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (onDismiss != null) {
-                IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, contentDescription = "Bỏ ghim", modifier = Modifier)
-                }
-            }
         }
     }
 }
@@ -304,6 +259,10 @@ fun MessageActionSheet(
     canEdit: Boolean = false,
     canDelete: Boolean = false,
     canPin: Boolean = true,
+    isPinned: Boolean = false,
+    canCodeSnippet: Boolean = false,
+    isCodeSnippet: Boolean = false,
+    onCodeSnippet: () -> Unit = {},
     myReactionEmojis: Set<String> = emptySet(),
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -335,7 +294,18 @@ fun MessageActionSheet(
         HorizontalDivider()
         SheetOptionRow(label = "Trả lời", icon = Icons.AutoMirrored.Filled.Reply, onClick = onReply)
         if (canPin) {
-            SheetOptionRow(label = "Ghim", icon = Icons.Default.PushPin, onClick = onPin)
+            SheetOptionRow(
+                label = if (isPinned) "Bỏ ghim" else "Ghim",
+                icon = Icons.Default.PushPin,
+                onClick = onPin,
+            )
+        }
+        if (canCodeSnippet) {
+            SheetOptionRow(
+                label = if (isCodeSnippet) "Bỏ code snippet" else "Code snippet",
+                icon = Icons.Default.Code,
+                onClick = onCodeSnippet,
+            )
         }
         SheetOptionRow(
             label = "Sửa",

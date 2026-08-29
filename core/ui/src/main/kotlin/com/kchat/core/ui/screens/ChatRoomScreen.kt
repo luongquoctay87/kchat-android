@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -67,6 +68,7 @@ import kotlinx.coroutines.flow.filter
 import com.kchat.core.design.KChatColors
 import com.kchat.core.design.KChatDimens
 import com.kchat.core.model.ChatMessage
+import com.kchat.core.model.PinnedMessage
 import com.kchat.core.model.ReactionCount
 import com.kchat.core.model.MessageType
 import com.kchat.core.model.ReplyQuote
@@ -76,6 +78,7 @@ import com.kchat.core.model.RoomMeta
 import com.kchat.core.ui.ChatListEntry
 import com.kchat.core.ui.KChatBackButton
 import com.kchat.core.ui.KChatTopBar
+import com.kchat.core.ui.LocalTransientAppLeave
 import com.kchat.core.ui.buildChatListEntries
 import com.kchat.core.ui.components.ChannelReadOnlyBar
 import com.kchat.core.ui.components.ChatInputBar
@@ -83,7 +86,7 @@ import com.kchat.core.ui.components.EditPreviewBar
 import com.kchat.core.ui.components.MentionPickerOverlay
 import com.kchat.core.ui.components.MessageActionSheet
 import com.kchat.core.ui.components.MessageBubble
-import com.kchat.core.ui.components.PinnedBanner
+import com.kchat.core.ui.components.PinnedMessagesBar
 import com.kchat.core.ui.components.RadioOptionRow
 import com.kchat.core.ui.components.ReadReceiptSheet
 import com.kchat.core.ui.components.ReplyPreviewBar
@@ -91,9 +94,12 @@ import com.kchat.core.ui.components.TypingIndicatorBubble
 import com.kchat.core.ui.components.SheetCancelRow
 import com.kchat.core.ui.components.SheetHandle
 import com.kchat.core.ui.components.SheetOptionRow
+import com.kchat.core.ui.components.isWholeMessageCodeSnippet
+import com.kchat.core.ui.components.toggleCodeSnippet
 import com.kchat.core.ui.demo.SampleData
 import com.kchat.core.ui.media.ImagePickerSheetContent
 import com.kchat.core.ui.media.PickAnyFile
+import com.kchat.core.ui.runWithoutLock
 
 private const val EDIT_WINDOW_MS = 15 * 60 * 1000L
 
@@ -133,10 +139,13 @@ fun ChatRoomScreen(
     },
     readReceipts: List<com.kchat.core.model.ReadReceipt> = SampleData.readReceipts,
     onLoadReadReceipts: (messageId: String) -> Unit = {},
-    pinnedMessage: String? = if (roomId == "room-2") SampleData.pinnedMessage else null,
-    pinnedMessageId: String? = null,
+    pinnedMessages: List<PinnedMessage> = if (roomId == "room-2") {
+        listOf(PinnedMessage(messageId = "pinned-room-2", text = SampleData.pinnedMessage))
+    } else {
+        emptyList()
+    },
     onPinMessage: (messageId: String) -> Unit = {},
-    onUnpinMessage: () -> Unit = {},
+    onUnpinMessage: (messageId: String) -> Unit = {},
     onOpenGroupInfo: () -> Unit = {},
     onOpenImage: (url: String, title: String) -> Unit = { _, _ -> },
     onOpenFile: (url: String, fileName: String) -> Unit = { _, _ -> },
@@ -144,6 +153,8 @@ fun ChatRoomScreen(
     onOpenCall: (CallType) -> Unit = {},
     onDisappearingChange: (seconds: Int?) -> Unit = {},
     onMuteChange: (durationSeconds: Int) -> Unit = {},
+    canAddPeerToContacts: Boolean = false,
+    onAddPeerToContacts: () -> Unit = {},
     scrollToMessageId: String? = null,
     onScrollToMessageConsumed: () -> Unit = {},
     onEnsureMessageLoaded: (messageId: String) -> Unit = {},
@@ -154,7 +165,9 @@ fun ChatRoomScreen(
     LaunchedEffect(messages) {
         localMessages = messages
     }
+    val transientLeave = LocalTransientAppLeave.current
     val pickFile = rememberLauncherForActivityResult(PickAnyFile()) { uri ->
+        transientLeave?.end()
         uri?.let { onSendMedia(it, null, null) }
     }
     var activeSheet by remember { mutableStateOf<ChatSheet?>(null) }
@@ -187,14 +200,6 @@ fun ChatRoomScreen(
     var editingMessageId by remember { mutableStateOf<String?>(null) }
     var selectedMessageId by remember { mutableStateOf<String?>(null) }
     var highlightedMessageId by remember { mutableStateOf<String?>(null) }
-    var pinnedText by remember(pinnedMessage) { mutableStateOf(pinnedMessage) }
-    var pinnedId by remember { mutableStateOf(pinnedMessageId) }
-    LaunchedEffect(pinnedMessage) {
-        pinnedText = pinnedMessage
-    }
-    LaunchedEffect(pinnedMessageId) {
-        pinnedMessageId?.let { pinnedId = it }
-    }
     var scrollTargetId by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(restoreDraft) {
         val draft = restoreDraft ?: return@LaunchedEffect
@@ -353,20 +358,15 @@ fun ChatRoomScreen(
                 .padding(padding)
                 .imePadding(),
         ) {
-            pinnedText?.let { pinned ->
-                PinnedBanner(
-                    text = pinned,
-                    onClick = pinnedId?.let { id ->
-                        {
-                            hideKeyboard()
-                            scrollTargetId = id
-                        }
+            if (pinnedMessages.isNotEmpty()) {
+                PinnedMessagesBar(
+                    pins = pinnedMessages,
+                    onClick = { id ->
+                        hideKeyboard()
+                        scrollTargetId = id
                     },
-                    onDismiss = if (roomMeta.canPost) {
-                        {
-                            pinnedText = null
-                            onUnpinMessage()
-                        }
+                    onUnpin = if (roomMeta.canPost) {
+                        { id -> onUnpinMessage(id) }
                     } else {
                         null
                     },
@@ -539,7 +539,7 @@ fun ChatRoomScreen(
                             icon = Icons.Default.InsertDriveFile,
                             onClick = {
                                 activeSheet = null
-                                pickFile.launch(Unit)
+                                transientLeave.runWithoutLock { pickFile.launch(Unit) }
                             },
                         )
                         HorizontalDivider()
@@ -555,6 +555,16 @@ fun ChatRoomScreen(
                         )
                     }
                     ChatSheet.Menu -> {
+                        if (canAddPeerToContacts) {
+                            SheetOptionRow(
+                                label = "Thêm vào danh bạ",
+                                icon = Icons.Outlined.PersonAdd,
+                                onClick = {
+                                    onAddPeerToContacts()
+                                    closeSheet()
+                                },
+                            )
+                        }
                         if (roomMeta.isMuted) {
                             SheetOptionRow(
                                 label = "Bật lại thông báo room",
@@ -671,12 +681,20 @@ fun ChatRoomScreen(
                                 ?.let { System.currentTimeMillis() - it <= EDIT_WINDOW_MS }
                                 ?: true
                             val canModify = selected.isMine && withinWindow
+                            val selectedIsPinned = pinnedMessages.any { it.messageId == selected.id }
+                            val canCodeSnippet = selected.type == MessageType.Text &&
+                                selected.text.isNotBlank()
+                            val isCodeSnippet = canCodeSnippet &&
+                                isWholeMessageCodeSnippet(selected.text)
                             MessageActionSheet(
                                 canEdit = canModify &&
-                                    selected.type == com.kchat.core.model.MessageType.Text &&
+                                    selected.type == MessageType.Text &&
                                     selected.text.isNotBlank(),
                                 canDelete = canModify,
                                 canPin = roomMeta.canPost,
+                                isPinned = selectedIsPinned,
+                                canCodeSnippet = canCodeSnippet,
+                                isCodeSnippet = isCodeSnippet,
                                 myReactionEmojis = selected.reactions
                                     .filter { it.reactedByMe }
                                     .map { it.emoji }
@@ -706,9 +724,30 @@ fun ChatRoomScreen(
                                     closeSheet()
                                 },
                                 onPin = {
-                                    pinnedId = selected.id
-                                    onPinMessage(selected.id)
-                                    pinnedText = selected.text.ifBlank { selected.fileName ?: "Tin nhắn" }
+                                    if (selectedIsPinned) {
+                                        onUnpinMessage(selected.id)
+                                    } else {
+                                        onPinMessage(selected.id)
+                                    }
+                                    closeSheet()
+                                },
+                                onCodeSnippet = {
+                                    val next = toggleCodeSnippet(selected.text)
+                                    if (canModify) {
+                                        onEditMessage(selected.id, next)
+                                        if (onSendMessage == null) {
+                                            localMessages = localMessages.map { msg ->
+                                                if (msg.id == selected.id) msg.copy(text = next, isEdited = true) else msg
+                                            }
+                                        }
+                                    } else {
+                                        editingMessageId = null
+                                        replyTarget = null
+                                        input = TextFieldValue(
+                                            text = next,
+                                            selection = TextRange(next.length),
+                                        )
+                                    }
                                     closeSheet()
                                 },
                                 onEdit = {

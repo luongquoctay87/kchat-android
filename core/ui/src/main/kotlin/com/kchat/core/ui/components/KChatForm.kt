@@ -2,6 +2,7 @@ package com.kchat.core.ui.components
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -9,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -21,12 +23,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.kchat.core.design.KChatDimens
+import com.kchat.core.model.SearchQueryRules
+import com.kchat.core.ui.keyboardScrollOnFocus
 
 @Composable
 fun KChatSearchField(
@@ -39,10 +44,21 @@ fun KChatSearchField(
 ) {
     OutlinedTextField(
         value = value,
-        onValueChange = onValueChange,
+        onValueChange = { raw -> onValueChange(SearchQueryRules.sanitize(raw)) },
         modifier = modifier.fillMaxWidth(),
         placeholder = { Text(placeholder) },
         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+        trailingIcon = {
+            if (value.isNotEmpty()) {
+                IconButton(onClick = { onValueChange("") }) {
+                    Icon(
+                        imageVector = Icons.Outlined.Close,
+                        contentDescription = "Xóa tìm kiếm",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    )
+                }
+            }
+        },
         singleLine = true,
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,
@@ -63,6 +79,7 @@ fun KChatTextField(
     isPassword: Boolean = false,
     singleLine: Boolean = true,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
     error: String? = null,
     supportingText: String? = null,
 ) {
@@ -71,14 +88,25 @@ fun KChatTextField(
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        modifier = modifier.fillMaxWidth(),
-        label = { Text(label) },
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = OutlinedTextFieldDefaults.MinHeight)
+            .keyboardScrollOnFocus(),
+        label = {
+            Text(
+                text = label,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        },
         singleLine = singleLine,
         isError = error != null,
         supportingText = helper?.let { message ->
             {
                 Text(
                     text = message,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                     color = if (error != null) {
                         MaterialTheme.colorScheme.error
                     } else {
@@ -92,6 +120,7 @@ fun KChatTextField(
         } else {
             keyboardOptions
         },
+        keyboardActions = keyboardActions,
         visualTransformation = if (isPassword && !passwordVisible) {
             PasswordVisualTransformation()
         } else {

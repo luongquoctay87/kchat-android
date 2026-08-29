@@ -10,7 +10,30 @@ import kotlinx.coroutines.flow.asStateFlow
 
 @Singleton
 class FakeContactsRepository @Inject constructor() : ContactsRepository {
-    private val contacts = MutableStateFlow(FakeSampleData.contacts)
+    private val contacts = MutableStateFlow(
+        FakeSampleData.contacts.map { it.copy(isContact = true) },
+    )
+    private val directory = FakeSampleData.contacts + listOf(
+        ContactSummary(
+            id = "u-5",
+            name = "Nguyễn Văn F",
+            subtitle = "offline",
+            isOnline = false,
+            email = "f@company.com",
+            username = "nguyenvanf",
+            isContact = false,
+        ),
+        ContactSummary(
+            id = "u-6",
+            name = "Đỗ Thị G",
+            subtitle = "online",
+            isOnline = true,
+            email = "g@company.com",
+            username = "dothig",
+            phone = "0901000006",
+            isContact = false,
+        ),
+    )
 
     override fun observeContacts(): Flow<List<ContactSummary>> = contacts.asStateFlow()
 
@@ -19,7 +42,7 @@ class FakeContactsRepository @Inject constructor() : ContactsRepository {
     }
 
     override fun restoreAfterLogout() {
-        contacts.value = FakeSampleData.contacts
+        contacts.value = FakeSampleData.contacts.map { it.copy(isContact = true) }
     }
 
     override suspend fun refreshContacts() = Unit
@@ -30,5 +53,32 @@ class FakeContactsRepository @Inject constructor() : ContactsRepository {
             else -> "room-$contactId"
         }
         return Result.success(roomId)
+    }
+
+    override suspend fun searchUsers(query: String): Result<List<ContactSummary>> {
+        val q = query.trim()
+        if (q.length < 2) return Result.success(emptyList())
+        val contactIds = contacts.value.map { it.id }.toSet()
+        return Result.success(
+            directory.filter {
+                it.name.contains(q, ignoreCase = true) ||
+                    it.email.contains(q, ignoreCase = true)
+            }.map { it.copy(isContact = it.id in contactIds) },
+        )
+    }
+
+    override suspend fun addContact(userId: String): Result<Unit> {
+        val user = directory.find { it.id == userId }
+            ?: return Result.failure(IllegalArgumentException("Không tìm thấy người dùng"))
+        if (contacts.value.none { it.id == userId }) {
+            contacts.value = (contacts.value + user.copy(isContact = true))
+                .sortedBy { it.name.lowercase() }
+        }
+        return Result.success(Unit)
+    }
+
+    override suspend fun removeContact(userId: String): Result<Unit> {
+        contacts.value = contacts.value.filterNot { it.id == userId }
+        return Result.success(Unit)
     }
 }

@@ -114,6 +114,13 @@ interface KChatApi {
     @POST("rooms/group")
     suspend fun createGroup(@Body body: CreateGroupRequest): RoomDto
 
+    @Multipart
+    @POST("rooms/{roomId}/avatar")
+    suspend fun updateGroupAvatar(
+        @Path("roomId") roomId: String,
+        @Part file: MultipartBody.Part,
+    ): RoomDto
+
     @GET("rooms/{roomId}/members")
     suspend fun getRoomMembers(@Path("roomId") roomId: String): List<RoomMemberDto>
 
@@ -207,7 +214,7 @@ interface KChatApi {
     ): List<ReadReceiptDto>
 
     @GET("rooms/{roomId}/pin")
-    suspend fun getPinned(@Path("roomId") roomId: String): retrofit2.Response<PinnedMessageDto>
+    suspend fun getPinned(@Path("roomId") roomId: String): List<PinnedMessageDto>
 
     @PUT("rooms/{roomId}/pin")
     suspend fun pinMessage(
@@ -215,11 +222,23 @@ interface KChatApi {
         @Body body: PinMessageRequest,
     ): PinnedMessageDto
 
-    @DELETE("rooms/{roomId}/pin")
-    suspend fun unpinMessage(@Path("roomId") roomId: String)
+    @DELETE("rooms/{roomId}/pin/{messageId}")
+    suspend fun unpinMessage(
+        @Path("roomId") roomId: String,
+        @Path("messageId") messageId: String,
+    )
 
     @GET("contacts")
     suspend fun getContacts(): List<ContactDto>
+
+    @GET("contacts/search")
+    suspend fun searchUsers(@Query("q") query: String): List<ContactDto>
+
+    @POST("contacts/{userId}")
+    suspend fun addContact(@Path("userId") userId: String)
+
+    @DELETE("contacts/{userId}")
+    suspend fun removeContact(@Path("userId") userId: String)
 
     @GET("devices")
     suspend fun getDevices(): List<DeviceDto>

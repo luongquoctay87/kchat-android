@@ -15,4 +15,4 @@ echo "Build & install debug APK..."
 echo "Mở app k-chat..."
 adb shell am start -n com.kchat/.MainActivity
 
-echo "Xong. Network: nguyenva / password (BE :8864). Fake: -Pkchat.useFake=true"
+echo "Xong. Staging mặc định; local: ./gradlew :app:installDebug -Pkchat.env=local"
