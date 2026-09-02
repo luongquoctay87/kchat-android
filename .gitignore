@@ -1,13 +1,41 @@
+# Gradle / Android build outputs (any module)
+build/
+**/build/
+.gradle/
+**/.gradle/
+
+# Local SDK path — machine-specific
+local.properties
+
+# IDE
 *.iml
-.gradle
-/local.properties
-/.idea/
+.idea/
+.idea/caches/
+.idea/libraries/
+.idea/modules.xml
+.idea/workspace.xml
+.idea/navEditor.xml
+.idea/assetWizardSettings.xml
+.vscode/
+
+# OS
 .DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+
+# Native / NDK
+.externalNativeBuild/
+.cxx/
+/captures/
+
+# APK / bundles
 *.apk
 *.ap_
 *.aab
+
+# Firebase (per-environment; use CI secret or local copy)
 google-services.json
+
+# Kotlin
+.kotlin/
+
+# Profiling
+*.hprof

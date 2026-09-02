@@ -1,2 +1,0 @@
-com.kchat.core.ui
-drawable kchat_logo
