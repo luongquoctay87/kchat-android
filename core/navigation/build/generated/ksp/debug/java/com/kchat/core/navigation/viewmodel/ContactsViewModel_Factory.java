@@ -1,6 +1,7 @@
 package com.kchat.core.navigation.viewmodel;
 
 import com.kchat.data.repository.ContactsRepository;
+import com.kchat.data.repository.EmergencyWipeCoordinator;
 import dagger.internal.DaggerGenerated;
 import dagger.internal.Factory;
 import dagger.internal.QualifierMetadata;
@@ -26,21 +27,27 @@ import javax.inject.Provider;
 public final class ContactsViewModel_Factory implements Factory<ContactsViewModel> {
   private final Provider<ContactsRepository> contactsRepositoryProvider;
 
-  public ContactsViewModel_Factory(Provider<ContactsRepository> contactsRepositoryProvider) {
+  private final Provider<EmergencyWipeCoordinator> emergencyWipeCoordinatorProvider;
+
+  public ContactsViewModel_Factory(Provider<ContactsRepository> contactsRepositoryProvider,
+      Provider<EmergencyWipeCoordinator> emergencyWipeCoordinatorProvider) {
     this.contactsRepositoryProvider = contactsRepositoryProvider;
+    this.emergencyWipeCoordinatorProvider = emergencyWipeCoordinatorProvider;
   }
 
   @Override
   public ContactsViewModel get() {
-    return newInstance(contactsRepositoryProvider.get());
+    return newInstance(contactsRepositoryProvider.get(), emergencyWipeCoordinatorProvider.get());
   }
 
   public static ContactsViewModel_Factory create(
-      Provider<ContactsRepository> contactsRepositoryProvider) {
-    return new ContactsViewModel_Factory(contactsRepositoryProvider);
+      Provider<ContactsRepository> contactsRepositoryProvider,
+      Provider<EmergencyWipeCoordinator> emergencyWipeCoordinatorProvider) {
+    return new ContactsViewModel_Factory(contactsRepositoryProvider, emergencyWipeCoordinatorProvider);
   }
 
-  public static ContactsViewModel newInstance(ContactsRepository contactsRepository) {
-    return new ContactsViewModel(contactsRepository);
+  public static ContactsViewModel newInstance(ContactsRepository contactsRepository,
+      EmergencyWipeCoordinator emergencyWipeCoordinator) {
+    return new ContactsViewModel(contactsRepository, emergencyWipeCoordinator);
   }
 }

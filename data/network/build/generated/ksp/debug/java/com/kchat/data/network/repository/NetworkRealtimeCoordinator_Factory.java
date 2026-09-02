@@ -10,6 +10,7 @@ import com.kchat.data.repository.CallSignalBus;
 import com.kchat.data.repository.ChatRepository;
 import com.kchat.data.repository.ContactsRepository;
 import com.kchat.data.repository.DeviceTokenStore;
+import com.kchat.data.repository.EmergencyWipeStore;
 import com.kchat.data.repository.IncomingMessageNotifier;
 import com.kchat.data.repository.TokenStore;
 import com.kchat.data.repository.TypingStateStore;
@@ -62,6 +63,8 @@ public final class NetworkRealtimeCoordinator_Factory implements Factory<Network
 
   private final Provider<IncomingMessageNotifier> incomingMessageNotifierProvider;
 
+  private final Provider<EmergencyWipeStore> emergencyWipeStoreProvider;
+
   private final Provider<String> apiBaseUrlProvider;
 
   public NetworkRealtimeCoordinator_Factory(Provider<KChatWebSocketClient> webSocketClientProvider,
@@ -75,6 +78,7 @@ public final class NetworkRealtimeCoordinator_Factory implements Factory<Network
       Provider<CallSignalBus> callSignalBusProvider,
       Provider<CallRepository> callRepositoryProvider,
       Provider<IncomingMessageNotifier> incomingMessageNotifierProvider,
+      Provider<EmergencyWipeStore> emergencyWipeStoreProvider,
       Provider<String> apiBaseUrlProvider) {
     this.webSocketClientProvider = webSocketClientProvider;
     this.apiProvider = apiProvider;
@@ -89,12 +93,13 @@ public final class NetworkRealtimeCoordinator_Factory implements Factory<Network
     this.callSignalBusProvider = callSignalBusProvider;
     this.callRepositoryProvider = callRepositoryProvider;
     this.incomingMessageNotifierProvider = incomingMessageNotifierProvider;
+    this.emergencyWipeStoreProvider = emergencyWipeStoreProvider;
     this.apiBaseUrlProvider = apiBaseUrlProvider;
   }
 
   @Override
   public NetworkRealtimeCoordinator get() {
-    return newInstance(webSocketClientProvider.get(), apiProvider.get(), accessTokenHolderProvider.get(), tokenStoreProvider.get(), deviceTokenStoreProvider.get(), localDataSourceProvider.get(), chatRepositoryProvider.get(), contactsRepositoryProvider.get(), activeRoomTrackerProvider.get(), typingStateStoreProvider.get(), callSignalBusProvider.get(), callRepositoryProvider.get(), incomingMessageNotifierProvider.get(), apiBaseUrlProvider.get());
+    return newInstance(webSocketClientProvider.get(), apiProvider.get(), accessTokenHolderProvider.get(), tokenStoreProvider.get(), deviceTokenStoreProvider.get(), localDataSourceProvider.get(), chatRepositoryProvider.get(), contactsRepositoryProvider.get(), activeRoomTrackerProvider.get(), typingStateStoreProvider.get(), callSignalBusProvider.get(), callRepositoryProvider.get(), incomingMessageNotifierProvider.get(), emergencyWipeStoreProvider.get(), apiBaseUrlProvider.get());
   }
 
   public static NetworkRealtimeCoordinator_Factory create(
@@ -109,8 +114,9 @@ public final class NetworkRealtimeCoordinator_Factory implements Factory<Network
       Provider<CallSignalBus> callSignalBusProvider,
       Provider<CallRepository> callRepositoryProvider,
       Provider<IncomingMessageNotifier> incomingMessageNotifierProvider,
+      Provider<EmergencyWipeStore> emergencyWipeStoreProvider,
       Provider<String> apiBaseUrlProvider) {
-    return new NetworkRealtimeCoordinator_Factory(webSocketClientProvider, apiProvider, accessTokenHolderProvider, tokenStoreProvider, deviceTokenStoreProvider, localDataSourceProvider, chatRepositoryProvider, contactsRepositoryProvider, activeRoomTrackerProvider, typingStateStoreProvider, callSignalBusProvider, callRepositoryProvider, incomingMessageNotifierProvider, apiBaseUrlProvider);
+    return new NetworkRealtimeCoordinator_Factory(webSocketClientProvider, apiProvider, accessTokenHolderProvider, tokenStoreProvider, deviceTokenStoreProvider, localDataSourceProvider, chatRepositoryProvider, contactsRepositoryProvider, activeRoomTrackerProvider, typingStateStoreProvider, callSignalBusProvider, callRepositoryProvider, incomingMessageNotifierProvider, emergencyWipeStoreProvider, apiBaseUrlProvider);
   }
 
   public static NetworkRealtimeCoordinator newInstance(KChatWebSocketClient webSocketClient,
@@ -119,7 +125,8 @@ public final class NetworkRealtimeCoordinator_Factory implements Factory<Network
       ChatRepository chatRepository, ContactsRepository contactsRepository,
       ActiveRoomTracker activeRoomTracker, TypingStateStore typingStateStore,
       CallSignalBus callSignalBus, CallRepository callRepository,
-      IncomingMessageNotifier incomingMessageNotifier, String apiBaseUrl) {
-    return new NetworkRealtimeCoordinator(webSocketClient, api, accessTokenHolder, tokenStore, deviceTokenStore, localDataSource, chatRepository, contactsRepository, activeRoomTracker, typingStateStore, callSignalBus, callRepository, incomingMessageNotifier, apiBaseUrl);
+      IncomingMessageNotifier incomingMessageNotifier, EmergencyWipeStore emergencyWipeStore,
+      String apiBaseUrl) {
+    return new NetworkRealtimeCoordinator(webSocketClient, api, accessTokenHolder, tokenStore, deviceTokenStore, localDataSource, chatRepository, contactsRepository, activeRoomTracker, typingStateStore, callSignalBus, callRepository, incomingMessageNotifier, emergencyWipeStore, apiBaseUrl);
   }
 }

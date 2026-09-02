@@ -74,49 +74,55 @@ class MainActivity : ComponentActivity() {
             var appearance by rememberSaveable(stateSaver = KChatAppearanceSaver) {
                 mutableStateOf(KChatAppearance())
             }
-            var notificationPermissionRequested by rememberSaveable { mutableStateOf(false) }
-            val notificationPermissionLauncher = rememberLauncherForActivityResult(
-                ActivityResultContracts.RequestPermission(),
-            ) { _ ->
-                pinLockTransientLeave.end()
-            }
-            val transientLeave = remember(pinLockTransientLeave) {
-                object : TransientAppLeave {
-                    override fun begin() = pinLockTransientLeave.begin()
-                    override fun end() = pinLockTransientLeave.end()
-                }
-            }
+                    var notificationPermissionRequested by rememberSaveable { mutableStateOf(false) }
+                    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+                        ActivityResultContracts.RequestPermission(),
+                    ) { granted ->
+                        pinLockTransientLeave.end()
+                        // After grant, re-sync FCM so the first message isn't lost to a late token.
+                        if (granted) {
+                            sessionViewModel?.onAppForegrounded()
+                        }
+                    }
+                    val transientLeave = remember(pinLockTransientLeave) {
+                        object : TransientAppLeave {
+                            override fun begin() = pinLockTransientLeave.begin()
+                            override fun end() = pinLockTransientLeave.end()
+                        }
+                    }
 
-            CompositionLocalProvider(LocalTransientAppLeave provides transientLeave) {
-                KChatTheme(appearance = appearance) {
-                    val vm: SessionViewModel = hiltViewModel()
-                    DisposableEffect(vm) {
-                        sessionViewModel = vm
-                        onDispose {
-                            if (sessionViewModel === vm) {
-                                sessionViewModel = null
+                    CompositionLocalProvider(LocalTransientAppLeave provides transientLeave) {
+                        KChatTheme(appearance = appearance) {
+                            val vm: SessionViewModel = hiltViewModel()
+                            DisposableEffect(vm) {
+                                sessionViewModel = vm
+                                onDispose {
+                                    if (sessionViewModel === vm) {
+                                        sessionViewModel = null
+                                    }
+                                }
                             }
-                        }
-                    }
-                    val gate by vm.gate.collectAsStateWithLifecycle()
-                    val navController = rememberNavController()
+                            val gate by vm.gate.collectAsStateWithLifecycle()
+                            val navController = rememberNavController()
 
-                    LaunchedEffect(gate, notificationPermissionRequested) {
-                        if (
-                            gate == SessionGate.Main &&
-                            !notificationPermissionRequested &&
-                            BuildConfig.FCM_ENABLED &&
-                            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                            ContextCompat.checkSelfPermission(
-                                this@MainActivity,
-                                Manifest.permission.POST_NOTIFICATIONS,
-                            ) != PackageManager.PERMISSION_GRANTED
-                        ) {
-                            notificationPermissionRequested = true
-                            pinLockTransientLeave.begin()
-                            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                        }
-                    }
+                            // Ask on Login (fresh install) — not only after Main — so permission
+                            // is decided before the first background message can arrive.
+                            LaunchedEffect(gate, notificationPermissionRequested) {
+                                if (gate == SessionGate.Loading) return@LaunchedEffect
+                                if (notificationPermissionRequested) return@LaunchedEffect
+                                if (!BuildConfig.FCM_ENABLED) return@LaunchedEffect
+                                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                                    return@LaunchedEffect
+                                }
+                                val granted = ContextCompat.checkSelfPermission(
+                                    this@MainActivity,
+                                    Manifest.permission.POST_NOTIFICATIONS,
+                                ) == PackageManager.PERMISSION_GRANTED
+                                if (granted) return@LaunchedEffect
+                                notificationPermissionRequested = true
+                                pinLockTransientLeave.begin()
+                                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            }
 
                     when (val current = gate) {
                         SessionGate.Loading -> Box(

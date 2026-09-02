@@ -1,10 +1,10 @@
 {
     "logs": [
         {
-            "outputFile": "com.kchat.app-mergeDebugResources-3:/values-v23/values-v23.xml",
+            "outputFile": "com.kchat.app-mergeDebugResources-75:/values-v23/values-v23.xml",
             "map": [
                 {
-                    "source": "/private/var/folders/1d/54zbppm11q73rsdd0fjlknmr0000gp/T/cursor-sandbox-cache/be4ac907a3e330603d49a719969f79a0/gradle/caches/8.11.1/transforms/3556faf6594f770d97c026cfe3824bb2/transformed/work-runtime-2.10.0/res/values-v23/values-v23.xml",
+                    "source": "/Users/sumod/.gradle/caches/8.13/transforms/19708aefbdbe6351c36c4de083e41fd1/transformed/work-runtime-2.10.0/res/values-v23/values-v23.xml",
                     "from": {
                         "startLines": "2,3",
                         "startColumns": "4,4",

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kchat.core.model.ContactSummary
 import com.kchat.data.repository.ContactsRepository
+import com.kchat.data.repository.EmergencyWipeCoordinator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Job
@@ -27,6 +28,7 @@ data class ContactsUiState(
 @HiltViewModel
 class ContactsViewModel @Inject constructor(
     private val contactsRepository: ContactsRepository,
+    private val emergencyWipeCoordinator: EmergencyWipeCoordinator,
 ) : ViewModel() {
     val contacts: StateFlow<List<ContactSummary>> = contactsRepository.observeContacts()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -113,6 +115,11 @@ class ContactsViewModel @Inject constructor(
         }
     }
 
-    suspend fun openDirectChat(contactId: String): Result<String> =
-        contactsRepository.openDirectChat(contactId)
+    suspend fun openDirectChat(contactId: String): Result<String> {
+        val result = contactsRepository.openDirectChat(contactId)
+        if (result.isSuccess) {
+            emergencyWipeCoordinator.clearAfterReengage()
+        }
+        return result
+    }
 }

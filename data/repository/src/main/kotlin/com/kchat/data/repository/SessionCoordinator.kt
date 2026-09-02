@@ -1,5 +1,6 @@
 package com.kchat.data.repository
 
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 
 class SessionCoordinator(
@@ -9,13 +10,12 @@ class SessionCoordinator(
     private val settingsRepository: SettingsRepository,
     private val localCacheCleanupScheduler: LocalCacheCleanupScheduler,
     private val pushTokenSync: PushTokenSync,
-    private val pendingFcmFlush: suspend () -> Unit,
+    private val pendingFcmFlush: suspend () -> Boolean,
 ) {
     suspend fun onAuthenticated() {
         // Session row (dev:*) for X-Device-Token — separate from FCM push token.
         runCatching { settingsRepository.registerCurrentDevice() }
-        runCatching { pushTokenSync.syncCurrentToken() }
-        runCatching { pendingFcmFlush() }
+        ensurePushTokenRegistered()
         // FCM register may remove dev: row on older backends — restore session token.
         runCatching { settingsRepository.registerCurrentDevice() }
         runCatching { settingsRepository.refreshDevices() }
@@ -29,9 +29,24 @@ class SessionCoordinator(
 
     /** Retry FCM registration after network recovery or app foreground. */
     suspend fun onForeground() {
-        runCatching { pushTokenSync.syncCurrentToken() }
-        runCatching { pendingFcmFlush() }
+        ensurePushTokenRegistered(maxAttempts = 2)
         runCatching { runLocalCacheCleanupNow() }
+    }
+
+    /**
+     * Fresh installs often need a retry: Play Services / FCM token can arrive slightly
+     * after the first login bootstrap, and until a real token is POSTed the backend
+     * only has a `dev:` row (skipped for push).
+     */
+    private suspend fun ensurePushTokenRegistered(maxAttempts: Int = 3) {
+        repeat(maxAttempts) { attempt ->
+            val synced = runCatching { pushTokenSync.syncCurrentToken() }.getOrDefault(false)
+            val flushed = runCatching { pendingFcmFlush() }.getOrDefault(false)
+            if (synced || flushed) return
+            if (attempt < maxAttempts - 1) {
+                delay(750L * (attempt + 1))
+            }
+        }
     }
 
     private suspend fun scheduleLocalCacheCleanup() {

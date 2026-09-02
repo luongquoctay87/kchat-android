@@ -506,6 +506,7 @@ class NetworkRealtimeCoordinator @Inject constructor(
     private val callSignalBus: CallSignalBus,
     private val callRepository: CallRepository,
     private val incomingMessageNotifier: IncomingMessageNotifier,
+    private val emergencyWipeStore: EmergencyWipeStore,
     @javax.inject.Named("apiBaseUrl") private val apiBaseUrl: String,
 ) : RealtimeCoordinator {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
@@ -740,8 +741,10 @@ class NetworkRealtimeCoordinator @Inject constructor(
 
     private suspend fun handleMessage(raw: String) {
         val envelope = runCatching { json.decodeFromString<WsEnvelope>(raw) }.getOrNull() ?: return
+        val wipeActive = emergencyWipeStore.isActiveNow()
         when (envelope.type) {
             WsEventType.MESSAGE_NEW -> {
+                if (wipeActive) return
                 val payload = envelope.payload?.let {
                     runCatching { json.decodeFromJsonElement<MessageNewPayload>(it) }.getOrNull()
                 } ?: return
@@ -765,6 +768,7 @@ class NetworkRealtimeCoordinator @Inject constructor(
                 }
             }
             WsEventType.MESSAGE_UPDATED -> {
+                if (wipeActive) return
                 val payload = envelope.payload?.let {
                     runCatching { json.decodeFromJsonElement<MessageNewPayload>(it) }.getOrNull()
                 } ?: return
@@ -780,6 +784,7 @@ class NetworkRealtimeCoordinator @Inject constructor(
                 )
             }
             WsEventType.MESSAGE_DELETED -> {
+                if (wipeActive) return
                 val payload = envelope.payload?.let {
                     runCatching { json.decodeFromJsonElement<MessageDeletedPayload>(it) }.getOrNull()
                 } ?: return

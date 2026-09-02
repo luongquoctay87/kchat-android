@@ -18,4 +18,11 @@ class EmergencyWipeCoordinatorImpl @Inject constructor(
         contactsRepository.clearForEmergencyWipe()
         emergencyWipeStore.activate()
     }
+
+    override suspend fun clearAfterReengage() {
+        if (!emergencyWipeStore.isActiveNow()) return
+        emergencyWipeStore.reset()
+        runCatching { chatRepository.refreshRooms() }
+        runCatching { contactsRepository.refreshContacts() }
+    }
 }

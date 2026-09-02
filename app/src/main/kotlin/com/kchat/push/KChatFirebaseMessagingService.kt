@@ -5,6 +5,7 @@ import com.google.firebase.messaging.RemoteMessage
 import com.kchat.BuildConfig
 import com.kchat.data.repository.ActiveRoomTracker
 import com.kchat.data.repository.AppForegroundTracker
+import com.kchat.data.repository.EmergencyWipeStore
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
@@ -19,6 +20,7 @@ class KChatFirebaseMessagingService : FirebaseMessagingService() {
     @Inject lateinit var pushNotificationHelper: PushNotificationHelper
     @Inject lateinit var activeRoomTracker: ActiveRoomTracker
     @Inject lateinit var appForegroundTracker: AppForegroundTracker
+    @Inject lateinit var emergencyWipeStore: EmergencyWipeStore
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -35,6 +37,7 @@ class KChatFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onMessageReceived(message: RemoteMessage) {
         if (BuildConfig.USE_FAKE_DATA || !BuildConfig.FCM_ENABLED) return
+        if (emergencyWipeStore.isActiveNow()) return
         val data = message.data
         if (data["type"] != "message_new") return
 
