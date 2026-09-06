@@ -23,6 +23,7 @@ data class ContactsUiState(
     val isSearching: Boolean = false,
     val searchError: String? = null,
     val actionError: String? = null,
+    val actionMessage: String? = null,
 )
 
 @HiltViewModel
@@ -45,7 +46,7 @@ class ContactsViewModel @Inject constructor(
     }
 
     fun onQueryChange(value: String) {
-        _uiState.update { it.copy(query = value, searchError = null, actionError = null) }
+        _uiState.update { it.copy(query = value, searchError = null, actionError = null, actionMessage = null) }
         searchJob?.cancel()
         val trimmed = value.trim()
         if (trimmed.length < 2) {
@@ -73,22 +74,40 @@ class ContactsViewModel @Inject constructor(
         }
     }
 
-    fun addContact(userId: String) {
+    fun addContact(contact: ContactSummary) {
+        val userId = contact.id.trim()
+        if (userId.isEmpty()) {
+            _uiState.update { it.copy(actionError = "Không thêm được vào danh bạ") }
+            return
+        }
+        _uiState.update { state ->
+            state.copy(
+                searchResults = state.searchResults.map { row ->
+                    if (row.id.equals(userId, ignoreCase = true)) {
+                        row.copy(isContact = true)
+                    } else {
+                        row
+                    }
+                },
+                actionError = null,
+                actionMessage = "Đã thêm ${contact.name}",
+            )
+        }
         viewModelScope.launch {
-            contactsRepository.addContact(userId)
-                .onSuccess {
+            contactsRepository.addContact(contact.copy(id = userId))
+                .onFailure { error ->
                     _uiState.update { state ->
                         state.copy(
                             searchResults = state.searchResults.map { row ->
-                                if (row.id == userId) row.copy(isContact = true) else row
+                                if (row.id.equals(userId, ignoreCase = true)) {
+                                    row.copy(isContact = false)
+                                } else {
+                                    row
+                                }
                             },
-                            actionError = null,
+                            actionError = error.message ?: "Không thêm được vào danh bạ",
+                            actionMessage = null,
                         )
-                    }
-                }
-                .onFailure { error ->
-                    _uiState.update {
-                        it.copy(actionError = error.message ?: "Không thêm được vào danh bạ")
                     }
                 }
         }

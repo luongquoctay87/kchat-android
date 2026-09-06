@@ -20,7 +20,7 @@ interface ContactsRepository {
     /** Search all active users by name / username / email (min 2 chars on server). */
     suspend fun searchUsers(query: String): Result<List<ContactSummary>>
 
-    suspend fun addContact(userId: String): Result<Unit>
+    suspend fun addContact(contact: ContactSummary): Result<Unit>
 
     suspend fun removeContact(userId: String): Result<Unit>
 }

@@ -31,6 +31,7 @@ class SessionCoordinator(
     suspend fun onForeground() {
         ensurePushTokenRegistered(maxAttempts = 2)
         runCatching { runLocalCacheCleanupNow() }
+        runCatching { chatRepository.refreshRooms() }
     }
 
     /**

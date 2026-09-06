@@ -25,7 +25,7 @@ class IncomingMessageNotifierImpl @Inject constructor(
         room: RoomSummary?,
     ) {
         if (message.isMine) return
-        if (appForegroundTracker.isForeground) return
+        if (activeRoomTracker.isActive(roomId) && appForegroundTracker.isForeground) return
 
         val settings = runCatching { settingsRepository.settings.first() }.getOrNull()
         if (!PushNotificationPolicy.shouldNotify(settings, room)) return

@@ -42,6 +42,7 @@ import com.kchat.data.network.dto.UserProfileDto
 import com.kchat.data.network.dto.UserSettingsDto
 import com.kchat.data.network.dto.WipeMessagesDto
 import com.kchat.data.network.dto.DeviceDto
+import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -235,7 +236,7 @@ interface KChatApi {
     suspend fun searchUsers(@Query("q") query: String): List<ContactDto>
 
     @POST("contacts/{userId}")
-    suspend fun addContact(@Path("userId") userId: String)
+    suspend fun addContact(@Path("userId") userId: String): Response<ContactDto>
 
     @DELETE("contacts/{userId}")
     suspend fun removeContact(@Path("userId") userId: String)

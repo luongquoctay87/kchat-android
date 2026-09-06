@@ -27,12 +27,19 @@ class PushNotificationHelper @Inject constructor(
     fun ensureChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
+        val existing = manager.getNotificationChannel(CHANNEL_ID)
+        if (existing != null && existing.importance < NotificationManager.IMPORTANCE_HIGH) {
+            manager.deleteNotificationChannel(CHANNEL_ID)
+        }
         val channel = NotificationChannel(
             CHANNEL_ID,
             "Tin nhắn",
             NotificationManager.IMPORTANCE_HIGH,
         ).apply {
             description = "Thông báo tin nhắn mới"
+            enableVibration(true)
+            enableLights(true)
+            setShowBadge(true)
         }
         manager.createNotificationChannel(channel)
     }
@@ -68,6 +75,9 @@ class PushNotificationHelper @Inject constructor(
             .setContentText(line)
             .setStyle(NotificationCompat.BigTextStyle().bigText(line))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .build()

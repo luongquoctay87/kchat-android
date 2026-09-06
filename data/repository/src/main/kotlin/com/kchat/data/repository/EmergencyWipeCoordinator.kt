@@ -9,8 +9,8 @@ interface EmergencyWipeCoordinator {
     suspend fun execute()
 
     /**
-     * Ends wipe suppression after the user intentionally opens a chat again,
-     * then re-syncs rooms/contacts so send/receive works normally.
+     * After the user opens a chat again, clear leftover realtime-mute from older builds.
+     * Does **not** re-fetch rooms, contacts, or message history.
      */
     suspend fun clearAfterReengage()
 }

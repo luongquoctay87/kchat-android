@@ -11,7 +11,10 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.first
 
-private val Context.deviceTokenDataStore by preferencesDataStore(name = "kchat_device")
+private val Context.deviceTokenDataStore by preferencesDataStore(
+    name = "kchat_device",
+    corruptionHandler = ReplaceEmptyPreferences,
+)
 
 @Singleton
 class DataStoreDeviceTokenStore @Inject constructor(

@@ -3,6 +3,7 @@ package com.kchat.data.network.repository
 import com.kchat.core.model.AuthTokens
 import com.kchat.core.model.CallRealtimeEvent
 import com.kchat.core.model.ChatMessage
+import com.kchat.core.model.MessageType
 import com.kchat.core.model.GroupMember
 import com.kchat.core.model.MentionUser
 import com.kchat.core.model.ReadReceipt
@@ -240,7 +241,7 @@ class NetworkChatRepository @Inject constructor(
         val base = dto.toModel().withAbsoluteMediaUrl(apiBaseUrl)
         val merged = base.copy(replyTo = base.replyTo?.mergeWith(replyTo) ?: replyTo)
         val message = merged.withEnrichedReply(existing)
-        localDataSource.appendMessageAndTouchRoom(roomId, message)
+        persistLocalMessage(roomId, message)
         message
     }
 
@@ -251,7 +252,7 @@ class NetworkChatRepository @Inject constructor(
     ): Result<ChatMessage> = apiResult("Không sửa được tin nhắn") {
         val dto = api.editMessage(roomId, messageId, EditMessageRequest(text.trim()))
         val message = dto.toModel().withAbsoluteMediaUrl(apiBaseUrl)
-        localDataSource.appendMessageAndTouchRoom(roomId, message, incrementUnread = false)
+        persistLocalMessage(roomId, message, incrementUnread = false)
         message
     }
 
@@ -288,7 +289,7 @@ class NetworkChatRepository @Inject constructor(
         val part = MultipartBody.Part.createFormData("file", name, body)
         val dto = api.sendMedia(roomId, part)
         val message = dto.toModel().withAbsoluteMediaUrl(apiBaseUrl)
-        localDataSource.appendMessageAndTouchRoom(roomId, message)
+        persistLocalMessage(roomId, message)
         message
     }
 
@@ -324,13 +325,56 @@ class NetworkChatRepository @Inject constructor(
     override suspend fun emergencyWipeAllMessages(): Result<Unit> {
         localDataSource.clearAll()
         runCatching { api.wipeMyMessages() }
+        // Drop anything an in-flight GET rooms/messages wrote while the wipe ran.
+        localDataSource.clearAll()
         return Result.success(Unit)
+    }
+
+    override suspend fun ensureLocalRoom(roomId: String, title: String) {
+        localDataSource.ensureRoomStub(roomId.trim().lowercase(), title)
+    }
+
+    override suspend fun ingestPushMessage(
+        roomId: String,
+        roomTitle: String,
+        senderName: String,
+        body: String,
+        messageId: String?,
+        createdAtMillis: Long?,
+        messageType: String?,
+    ) {
+        val id = roomId.trim().lowercase()
+        if (id.isBlank()) return
+        localDataSource.ensureRoomStub(id, roomTitle)
+        val remoteId = messageId?.trim().orEmpty()
+        if (remoteId.isNotEmpty()) {
+            val createdAt = createdAtMillis?.takeIf { it > 0L } ?: System.currentTimeMillis()
+            persistLocalMessage(
+                roomId = id,
+                message = ChatMessage(
+                    id = remoteId,
+                    type = messageType.toPushMessageType(),
+                    text = body,
+                    senderName = senderName.takeIf { it.isNotBlank() },
+                    isMine = false,
+                    time = pushTimeLabel(createdAt),
+                    createdAtMillis = createdAt,
+                ),
+            )
+        }
+        if (emergencyWipeStore.isActiveNow()) return
+        refreshMessages(id)
+        refreshRooms()
     }
 
     override suspend fun refreshRooms() {
         if (emergencyWipeStore.isActiveNow()) return
         try {
-            val rooms = api.getRooms().map { it.toModel().withAbsoluteAvatarUrl(apiBaseUrl) }
+            val rooms = api.getRooms().map {
+                it.toModel().withAbsoluteAvatarUrl(apiBaseUrl).let { room ->
+                    room.copy(id = room.id.trim().lowercase())
+                }
+            }
             localDataSource.cacheRooms(rooms)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
@@ -341,11 +385,12 @@ class NetworkChatRepository @Inject constructor(
 
     override suspend fun refreshMessages(roomId: String, limit: Int) {
         if (emergencyWipeStore.isActiveNow()) return
+        val id = roomId.trim().lowercase()
         try {
-            val mapped = api.getMessages(roomId, limit = limit)
+            val mapped = api.getMessages(id, limit = limit)
                 .map { it.toModel().withAbsoluteMediaUrl(apiBaseUrl) }
             val enriched = mapped.map { it.withEnrichedReply(mapped) }
-            localDataSource.cacheMessages(roomId, enriched)
+            localDataSource.cacheMessages(id, enriched)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (_: Exception) {
@@ -450,6 +495,21 @@ class NetworkChatRepository @Inject constructor(
                 .withAbsoluteAvatarUrl(apiBaseUrl)
             localDataSource.upsertRoom(updated)
         }
+
+    /** Persist inbound/outbound locally. After wipe this recreates only this room, not server history. */
+    private suspend fun persistLocalMessage(
+        roomId: String,
+        message: ChatMessage,
+        incrementUnread: Boolean = true,
+        preserveReactedByMe: Boolean = false,
+    ) {
+        localDataSource.appendMessageAndTouchRoom(
+            roomId = roomId,
+            message = message,
+            incrementUnread = incrementUnread,
+            preserveReactedByMe = preserveReactedByMe,
+        )
+    }
 }
 
 private fun RoomSummary.withAbsoluteAvatarUrl(baseUrl: String): RoomSummary {
@@ -474,6 +534,18 @@ private fun ChatMessage.withAbsoluteMediaUrl(baseUrl: String): ChatMessage {
         else -> copy(mediaUrl = mainUrl, replyTo = reply)
     }
 }
+
+private fun String?.toPushMessageType(): MessageType = when (this?.trim()?.lowercase()) {
+    "image" -> MessageType.Image
+    "file" -> MessageType.File
+    "call_event" -> MessageType.CallEvent
+    "system", "bot" -> MessageType.Bot
+    else -> MessageType.Text
+}
+
+private fun pushTimeLabel(createdAtMillis: Long): String =
+    java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+        .format(java.util.Date(createdAtMillis))
 
 @Singleton
 class NetworkPushTokenRegistrar @Inject constructor(
@@ -506,7 +578,6 @@ class NetworkRealtimeCoordinator @Inject constructor(
     private val callSignalBus: CallSignalBus,
     private val callRepository: CallRepository,
     private val incomingMessageNotifier: IncomingMessageNotifier,
-    private val emergencyWipeStore: EmergencyWipeStore,
     @javax.inject.Named("apiBaseUrl") private val apiBaseUrl: String,
 ) : RealtimeCoordinator {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
@@ -741,50 +812,61 @@ class NetworkRealtimeCoordinator @Inject constructor(
 
     private suspend fun handleMessage(raw: String) {
         val envelope = runCatching { json.decodeFromString<WsEnvelope>(raw) }.getOrNull() ?: return
-        val wipeActive = emergencyWipeStore.isActiveNow()
         when (envelope.type) {
             WsEventType.MESSAGE_NEW -> {
-                if (wipeActive) return
                 val payload = envelope.payload?.let {
                     runCatching { json.decodeFromJsonElement<MessageNewPayload>(it) }.getOrNull()
                 } ?: return
-                val existing = localDataSource.getMessages(payload.roomId)
+                val roomId = payload.roomId.trim().lowercase()
+                val existing = localDataSource.getMessages(roomId)
                 val message = payload.message.toModel()
                     .withAbsoluteMediaUrl(apiBaseUrl)
                     .withEnrichedReply(existing)
-                val viewing = activeRoomTracker.isActive(payload.roomId)
+                val viewing = activeRoomTracker.isActive(roomId)
+                if (localDataSource.getRoom(roomId) == null) {
+                    localDataSource.ensureRoomStub(
+                        roomId,
+                        message.senderName?.takeIf { it.isNotBlank() } ?: "Chat",
+                    )
+                }
                 localDataSource.appendMessageAndTouchRoom(
-                    roomId = payload.roomId,
+                    roomId = roomId,
                     message = message,
                     incrementUnread = !viewing && !message.isMine,
                 )
-                typingStateStore.clear(payload.roomId)
+                typingStateStore.clear(roomId)
                 if (viewing && !message.isMine) {
-                    scheduleMarkRead(payload.roomId)
+                    scheduleMarkRead(roomId)
                 }
                 if (!viewing && !message.isMine) {
-                    val room = localDataSource.getRoom(payload.roomId)
-                    incomingMessageNotifier.onIncomingMessage(payload.roomId, message, room)
+                    val room = localDataSource.getRoom(roomId)
+                    incomingMessageNotifier.onIncomingMessage(roomId, message, room)
+                } else if (!viewing && message.isMine && !message.senderName.isNullOrBlank()) {
+                    val room = localDataSource.getRoom(roomId)
+                    incomingMessageNotifier.onIncomingMessage(
+                        roomId,
+                        message.copy(isMine = false),
+                        room,
+                    )
                 }
             }
             WsEventType.MESSAGE_UPDATED -> {
-                if (wipeActive) return
                 val payload = envelope.payload?.let {
                     runCatching { json.decodeFromJsonElement<MessageNewPayload>(it) }.getOrNull()
                 } ?: return
-                val existing = localDataSource.getMessages(payload.roomId)
+                val roomId = payload.roomId.trim().lowercase()
+                val existing = localDataSource.getMessages(roomId)
                 val message = payload.message.toModel()
                     .withAbsoluteMediaUrl(apiBaseUrl)
                     .withEnrichedReply(existing)
                 localDataSource.appendMessageAndTouchRoom(
-                    roomId = payload.roomId,
+                    roomId = roomId,
                     message = message,
                     incrementUnread = false,
                     preserveReactedByMe = true,
                 )
             }
             WsEventType.MESSAGE_DELETED -> {
-                if (wipeActive) return
                 val payload = envelope.payload?.let {
                     runCatching { json.decodeFromJsonElement<MessageDeletedPayload>(it) }.getOrNull()
                 } ?: return

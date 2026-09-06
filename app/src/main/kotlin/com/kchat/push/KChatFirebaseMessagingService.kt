@@ -5,7 +5,8 @@ import com.google.firebase.messaging.RemoteMessage
 import com.kchat.BuildConfig
 import com.kchat.data.repository.ActiveRoomTracker
 import com.kchat.data.repository.AppForegroundTracker
-import com.kchat.data.repository.EmergencyWipeStore
+import com.kchat.data.repository.ChatRepository
+import com.kchat.data.repository.TokenStore
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
@@ -18,9 +19,10 @@ import kotlinx.coroutines.launch
 class KChatFirebaseMessagingService : FirebaseMessagingService() {
     @Inject lateinit var fcmTokenHandler: FcmTokenHandler
     @Inject lateinit var pushNotificationHelper: PushNotificationHelper
+    @Inject lateinit var chatRepository: ChatRepository
+    @Inject lateinit var tokenStore: TokenStore
     @Inject lateinit var activeRoomTracker: ActiveRoomTracker
     @Inject lateinit var appForegroundTracker: AppForegroundTracker
-    @Inject lateinit var emergencyWipeStore: EmergencyWipeStore
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -37,17 +39,21 @@ class KChatFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onMessageReceived(message: RemoteMessage) {
         if (BuildConfig.USE_FAKE_DATA || !BuildConfig.FCM_ENABLED) return
-        if (emergencyWipeStore.isActiveNow()) return
         val data = message.data
-        if (data["type"] != "message_new") return
+        val type = data["type"]
+        if (!type.isNullOrBlank() && type != "message_new") return
 
         val roomId = data["room_id"] ?: return
         // Suppress only when user is viewing this room in foreground (ViewModel may survive on Home).
         if (appForegroundTracker.isForeground && activeRoomTracker.isActive(roomId)) return
 
-        val roomTitle = data["room_title"].orEmpty()
+        val roomTitle = data["room_title"].orEmpty().ifBlank {
+            message.notification?.title.orEmpty()
+        }
         val senderName = data["sender_name"].orEmpty()
-        val body = data["body"] ?: message.notification?.body ?: "Tin nhắn mới"
+        val body = data["body"]
+            ?: message.notification?.body
+            ?: "Tin nhắn mới"
 
         pushNotificationHelper.showMessageNotification(
             roomId = roomId,
@@ -55,5 +61,20 @@ class KChatFirebaseMessagingService : FirebaseMessagingService() {
             senderName = senderName,
             body = body,
         )
+
+        scope.launch {
+            if (tokenStore.getAccessToken().isNullOrBlank()) return@launch
+            runCatching {
+                chatRepository.ingestPushMessage(
+                    roomId = roomId,
+                    roomTitle = roomTitle,
+                    senderName = senderName,
+                    body = body,
+                    messageId = data["message_id"],
+                    createdAtMillis = data["created_at"]?.toLongOrNull(),
+                    messageType = data["message_type"],
+                )
+            }
+        }
     }
 }

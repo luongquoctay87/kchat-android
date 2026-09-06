@@ -4,8 +4,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,8 +22,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material.icons.outlined.PersonOff
 import androidx.compose.material.icons.outlined.PersonRemove
 import androidx.compose.material3.AlertDialog
@@ -49,10 +48,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -82,6 +80,7 @@ fun ContactsScreen(
     isSearching: Boolean = false,
     searchError: String? = null,
     actionError: String? = null,
+    actionMessage: String? = null,
     onContactClick: (ContactSummary) -> Unit = {},
     onAddContact: (ContactSummary) -> Unit = {},
     onRemoveContact: (ContactSummary) -> Unit = {},
@@ -92,11 +91,13 @@ fun ContactsScreen(
     val filteredContacts = contacts.filter {
         trimmedQuery.isEmpty() ||
             it.name.contains(trimmedQuery, ignoreCase = true) ||
-            it.email.contains(trimmedQuery, ignoreCase = true)
+            it.email.contains(trimmedQuery, ignoreCase = true) ||
+            it.username.contains(trimmedQuery, ignoreCase = true)
     }
     val otherResults = if (searchingDirectory) {
-        val contactIds = contacts.map { it.id }.toSet()
-        searchResults.filter { it.id !in contactIds }
+        searchResults.filter { result ->
+            contacts.none { it.id.equals(result.id, ignoreCase = true) }
+        }
     } else {
         emptyList()
     }
@@ -199,16 +200,17 @@ fun ContactsScreen(
                 modifier = Modifier.padding(horizontal = KChatDimens.screenPadding),
             )
         }
+        if (actionMessage != null) {
+            Text(
+                text = actionMessage,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(horizontal = KChatDimens.screenPadding),
+            )
+        }
         LazyColumn(
             state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .pointerInput(Unit) {
-                    awaitEachGesture {
-                        awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-                        hideKeyboard()
-                    }
-                },
+            modifier = Modifier.fillMaxSize(),
         ) {
             if (!searchingDirectory) {
                 if (filteredContacts.isEmpty()) {
@@ -290,15 +292,8 @@ fun ContactsScreen(
                         items(otherResults, key = { "s-${it.id}" }) { contact ->
                             ContactRow(
                                 contact = contact,
-                                action = if (contact.isContact) {
-                                    ContactRowAction.Added
-                                } else {
-                                    ContactRowAction.Add
-                                },
-                                onAction = {
-                                    hideKeyboard()
-                                    onAddContact(contact)
-                                },
+                                action = ContactRowAction.Add,
+                                onAction = { onAddContact(contact) },
                                 onClick = {
                                     hideKeyboard()
                                     onContactClick(contact)
@@ -389,53 +384,66 @@ private fun ContactRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .then(
-                if (onLongClick != null) {
-                    Modifier.combinedClickable(
-                        onClick = onClick,
-                        onLongClick = onLongClick,
-                    )
-                } else {
-                    Modifier.clickable(onClick = onClick)
-                },
-            )
             .padding(horizontal = KChatDimens.screenPadding, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        UserAvatar(name = contact.name, imageUrl = contact.avatarUrl, isOnline = contact.isOnline)
-        Spacer(modifier = Modifier.width(14.dp))
-        Column(modifier = Modifier.weight(1f).padding(vertical = 8.dp)) {
-            Text(
-                text = contact.name,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium,
-            )
-            Text(
-                text = contact.subtitle.ifBlank { contact.email },
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (contact.isOnline) {
-                    KChatColors.online
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
-            )
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .then(
+                    if (onLongClick != null) {
+                        Modifier.combinedClickable(
+                            onClick = onClick,
+                            onLongClick = onLongClick,
+                        )
+                    } else {
+                        Modifier.clickable(onClick = onClick)
+                    },
+                ),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            UserAvatar(name = contact.name, imageUrl = contact.avatarUrl, isOnline = contact.isOnline)
+            Spacer(modifier = Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f).padding(vertical = 8.dp)) {
+                Text(
+                    text = contact.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                )
+                Text(
+                    text = contact.subtitle.ifBlank { contact.email },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (contact.isOnline) {
+                        KChatColors.online
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+            }
         }
         if (action != null && onAction != null) {
             val (icon, contentDescription, enabled, tint) = when (action) {
                 ContactRowAction.Add -> ContactActionVisual(
-                    icon = Icons.Outlined.Add,
+                    icon = Icons.Filled.PersonAdd,
                     contentDescription = "Thêm vào danh bạ",
                     enabled = true,
-                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
+                    tint = MaterialTheme.colorScheme.primary,
                 )
                 ContactRowAction.Added -> ContactActionVisual(
-                    icon = Icons.Outlined.Add,
+                    icon = Icons.Outlined.PersonAdd,
                     contentDescription = "Đã thêm",
                     enabled = false,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                 )
             }
-            IconButton(onClick = onAction, enabled = enabled) {
+            IconButton(
+                onClick = {
+                    if (!enabled) return@IconButton
+                    onAction()
+                },
+                enabled = enabled,
+                modifier = Modifier.zIndex(1f),
+            ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = contentDescription,

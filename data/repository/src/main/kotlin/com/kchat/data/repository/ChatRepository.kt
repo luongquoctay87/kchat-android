@@ -48,6 +48,23 @@ interface ChatRepository {
     /** Emergency wipe: clear local chat cache, best-effort server wipe. */
     suspend fun emergencyWipeAllMessages(): Result<Unit>
 
+    /** Seed a single local room row (no history fetch) so send can appear on the chat list. */
+    suspend fun ensureLocalRoom(roomId: String, title: String)
+
+    /**
+     * Persist a background push into the local chat list/thread.
+     * Fetches server history unless emergency-wipe is still suppressing it.
+     */
+    suspend fun ingestPushMessage(
+        roomId: String,
+        roomTitle: String,
+        senderName: String,
+        body: String,
+        messageId: String?,
+        createdAtMillis: Long?,
+        messageType: String? = null,
+    )
+
     suspend fun refreshRooms()
 
     suspend fun refreshMessages(roomId: String, limit: Int = 50)

@@ -21,7 +21,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
-private val Context.pinLockDataStore: DataStore<Preferences> by preferencesDataStore(name = "kchat_pin_lock")
+private val Context.pinLockDataStore: DataStore<Preferences> by preferencesDataStore(
+    name = "kchat_pin_lock",
+    corruptionHandler = ReplaceEmptyPreferences,
+)
 
 @Singleton
 class DataStorePinLockStore @Inject constructor(

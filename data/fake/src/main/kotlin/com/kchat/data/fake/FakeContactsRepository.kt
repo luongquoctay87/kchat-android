@@ -67,11 +67,10 @@ class FakeContactsRepository @Inject constructor() : ContactsRepository {
         )
     }
 
-    override suspend fun addContact(userId: String): Result<Unit> {
-        val user = directory.find { it.id == userId }
-            ?: return Result.failure(IllegalArgumentException("Không tìm thấy người dùng"))
-        if (contacts.value.none { it.id == userId }) {
-            contacts.value = (contacts.value + user.copy(isContact = true))
+    override suspend fun addContact(contact: ContactSummary): Result<Unit> {
+        val userId = contact.id
+        if (contacts.value.none { it.id.equals(userId, ignoreCase = true) }) {
+            contacts.value = (contacts.value + contact.copy(isContact = true))
                 .sortedBy { it.name.lowercase() }
         }
         return Result.success(Unit)

@@ -42,9 +42,7 @@ class FakeChatRepository @Inject constructor(
     override fun observeRooms(): Flow<List<RoomSummary>> = rooms
 
     override fun observeMessages(roomId: String): Flow<List<ChatMessage>> =
-        messagesByRoom.getOrPut(roomId) {
-            MutableStateFlow(FakeSampleData.messagesForRoom(roomId))
-        }
+        messagesByRoom.getOrPut(roomId) { MutableStateFlow(emptyList()) }
 
     override fun observeRoomMeta(roomId: String): Flow<RoomMeta> =
         rooms.map { list ->
@@ -68,9 +66,7 @@ class FakeChatRepository @Inject constructor(
         text: String,
         replyTo: ReplyQuote?,
     ): Result<ChatMessage> {
-        val flow = messagesByRoom.getOrPut(roomId) {
-            MutableStateFlow(FakeSampleData.messagesForRoom(roomId))
-        }
+        val flow = messagesByRoom.getOrPut(roomId) { MutableStateFlow(emptyList()) }
         val message = ChatMessage(
             id = "local-${System.currentTimeMillis()}",
             text = text.trim(),
@@ -146,16 +142,14 @@ class FakeChatRepository @Inject constructor(
             isMine = true,
             time = "vừa xong",
         )
-        messagesByRoom.getOrPut(roomId) {
-            MutableStateFlow(FakeSampleData.messagesForRoom(roomId))
-        }.update { it + message }
+        messagesByRoom.getOrPut(roomId) { MutableStateFlow(emptyList()) }.update { it + message }
         return Result.success(message)
     }
 
     override suspend fun searchInRoom(roomId: String, query: String): List<SearchResult> {
         val q = query.trim()
         if (q.isBlank()) return emptyList()
-        val messages = messagesByRoom[roomId]?.value ?: FakeSampleData.messagesForRoom(roomId)
+        val messages = messagesByRoom[roomId]?.value.orEmpty()
         return messages.filter { msg ->
             msg.text.contains(q, ignoreCase = true) ||
                 msg.fileName?.contains(q, ignoreCase = true) == true ||
@@ -212,6 +206,60 @@ class FakeChatRepository @Inject constructor(
         return Result.success(Unit)
     }
 
+    override suspend fun ensureLocalRoom(roomId: String, title: String) {
+        if (rooms.value.none { it.id.equals(roomId, ignoreCase = true) }) {
+            rooms.update {
+                it + RoomSummary(
+                    id = roomId,
+                    title = title.ifBlank { "Chat" },
+                    preview = "",
+                    time = "",
+                )
+            }
+        }
+        messagesByRoom.getOrPut(roomId) { MutableStateFlow(emptyList()) }
+    }
+
+    override suspend fun ingestPushMessage(
+        roomId: String,
+        roomTitle: String,
+        senderName: String,
+        body: String,
+        messageId: String?,
+        createdAtMillis: Long?,
+        messageType: String?,
+    ) {
+        ensureLocalRoom(roomId, roomTitle)
+        val remoteId = messageId?.trim().orEmpty()
+        if (remoteId.isNotEmpty()) {
+            val flow = messagesByRoom.getOrPut(roomId) { MutableStateFlow(emptyList()) }
+            if (flow.value.none { it.id == remoteId }) {
+                val createdAt = createdAtMillis?.takeIf { it > 0L } ?: System.currentTimeMillis()
+                flow.value = flow.value + ChatMessage(
+                    id = remoteId,
+                    text = body,
+                    senderName = senderName.takeIf { it.isNotBlank() },
+                    isMine = false,
+                    time = "now",
+                    createdAtMillis = createdAt,
+                )
+                rooms.update { list ->
+                    list.map { room ->
+                        if (!room.id.equals(roomId, ignoreCase = true)) room
+                        else room.copy(
+                            preview = body.ifBlank { room.preview },
+                            time = "now",
+                            unreadCount = room.unreadCount + 1,
+                        )
+                    }
+                }
+            }
+        }
+        if (emergencyWipeStore.isActiveNow()) return
+        refreshMessages(roomId)
+        refreshRooms()
+    }
+
     override suspend fun refreshRooms() {
         if (emergencyWipeStore.isActiveNow()) return
         rooms.value = FakeSampleData.rooms
@@ -219,9 +267,8 @@ class FakeChatRepository @Inject constructor(
 
     override suspend fun refreshMessages(roomId: String, limit: Int) {
         if (emergencyWipeStore.isActiveNow()) return
-        messagesByRoom.getOrPut(roomId) {
-            MutableStateFlow(FakeSampleData.messagesForRoom(roomId))
-        }.value = FakeSampleData.messagesForRoom(roomId)
+        messagesByRoom.getOrPut(roomId) { MutableStateFlow(emptyList()) }.value =
+            FakeSampleData.messagesForRoom(roomId)
     }
 
     override suspend fun markRoomRead(roomId: String) {

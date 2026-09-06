@@ -48,6 +48,20 @@ class ChatLocalDataSource @Inject constructor(
         )
     }
 
+    suspend fun ensureRoomStub(roomId: String, title: String) {
+        if (roomDao.getById(roomId) != null) return
+        roomDao.upsertAll(
+            listOf(
+                RoomSummary(
+                    id = roomId,
+                    title = title.ifBlank { "Chat" },
+                    preview = "",
+                    time = "",
+                ).toEntity(),
+            ),
+        )
+    }
+
     suspend fun cacheMessages(roomId: String, messages: List<ChatMessage>) {
         messageDao.clearRoom(roomId)
         if (messages.isNotEmpty()) {
@@ -102,6 +116,9 @@ class ChatLocalDataSource @Inject constructor(
             existingMsg.mediaUrl != message.mediaUrl
         appendMessage(roomId, message, preserveReactedByMe = preserveReactedByMe)
         if (!isNew && !contentChanged) return
+        if (roomDao.getById(roomId) == null) {
+            ensureRoomStub(roomId, "")
+        }
         val room = roomDao.getById(roomId) ?: return
         val preview = when {
             message.type == com.kchat.core.model.MessageType.CallEvent ->

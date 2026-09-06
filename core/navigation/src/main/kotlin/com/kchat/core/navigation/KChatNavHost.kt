@@ -16,6 +16,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -324,6 +325,10 @@ fun KChatNavHost(
         composable<KChatRoute.Chat> { entry ->
             val route = entry.toRoute<KChatRoute.Chat>()
             val viewModel: ChatRoomViewModel = hiltViewModel()
+            DisposableEffect(viewModel, viewModel.roomId) {
+                viewModel.onScreenVisible()
+                onDispose { viewModel.onScreenHidden() }
+            }
             val messages by viewModel.messages.collectAsStateWithLifecycle()
             val roomMeta by viewModel.roomMeta.collectAsStateWithLifecycle()
             val pinned by viewModel.pinned.collectAsStateWithLifecycle()
@@ -881,6 +886,7 @@ private fun MainTabsScreen(
                             isSearching = contactsUi.isSearching,
                             searchError = contactsUi.searchError,
                             actionError = contactsUi.actionError,
+                            actionMessage = contactsUi.actionMessage,
                             onContactClick = { contact ->
                                 scope.launch {
                                     contactsViewModel.openDirectChat(contact.id)
@@ -897,7 +903,7 @@ private fun MainTabsScreen(
                                 }
                             },
                             onAddContact = { contact ->
-                                contactsViewModel.addContact(contact.id)
+                                contactsViewModel.addContact(contact)
                             },
                             onRemoveContact = { contact ->
                                 contactsViewModel.removeContact(contact.id)

@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
 import com.kchat.core.model.ChatMessage
+import com.kchat.core.model.ContactSummary
+import com.kchat.core.model.GroupMember
 import com.kchat.core.model.MentionUser
 import com.kchat.core.model.PinnedMessage
 import com.kchat.core.model.PinMessageRules
@@ -12,9 +14,11 @@ import com.kchat.core.model.ReadReceipt
 import com.kchat.core.model.ReplyQuote
 import com.kchat.core.model.RoomMeta
 import com.kchat.core.navigation.KChatRoute
+import com.kchat.data.repository.AccessTokenHolder
 import com.kchat.data.repository.ActiveRoomTracker
 import com.kchat.data.repository.ChatRepository
 import com.kchat.data.repository.ContactsRepository
+import com.kchat.data.repository.EmergencyWipeCoordinator
 import com.kchat.data.repository.RealtimeCoordinator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -35,8 +39,10 @@ class ChatRoomViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val chatRepository: ChatRepository,
     private val contactsRepository: ContactsRepository,
+    private val emergencyWipeCoordinator: EmergencyWipeCoordinator,
     private val activeRoomTracker: ActiveRoomTracker,
     private val realtimeCoordinator: RealtimeCoordinator,
+    private val accessTokenHolder: AccessTokenHolder,
 ) : ViewModel() {
     private val route = savedStateHandle.toRoute<KChatRoute.Chat>()
     val roomId: String = route.roomId.trim().lowercase()
@@ -65,15 +71,17 @@ class ChatRoomViewModel @Inject constructor(
     val restoreReply: StateFlow<ReplyQuote?> = _restoreReply.asStateFlow()
 
     private val mentionCandidates = MutableStateFlow<List<MentionUser>>(emptyList())
-    private val peerUserId = MutableStateFlow<String?>(null)
+    private val peer = MutableStateFlow<GroupMember?>(null)
 
     /** True when this is a 1-1 chat and the peer is not yet in the viewer's address book. */
     val canAddPeerToContacts: StateFlow<Boolean> = combine(
         roomMeta,
-        peerUserId,
+        peer,
         contactsRepository.observeContacts(),
-    ) { meta, peerId, contacts ->
-        if (meta.isGroup || meta.isChannel || peerId.isNullOrBlank()) return@combine false
+    ) { meta, peerMember, contacts ->
+        if (meta.isGroup || meta.isChannel) return@combine false
+        val peerId = peerMember?.id?.trim().orEmpty()
+        if (peerId.isEmpty()) return@combine false
         contacts.none { it.id.equals(peerId, ignoreCase = true) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
@@ -84,8 +92,9 @@ class ChatRoomViewModel @Inject constructor(
     private var isComposing = false
 
     init {
-        activeRoomTracker.enter(roomId)
         viewModelScope.launch {
+            runCatching { emergencyWipeCoordinator.clearAfterReengage() }
+            runCatching { chatRepository.ensureLocalRoom(roomId, route.title) }
             runCatching { chatRepository.refreshMessages(roomId) }
             runCatching { chatRepository.markRoomRead(roomId) }
             refreshPinned()
@@ -99,6 +108,14 @@ class ChatRoomViewModel @Inject constructor(
         realtimeCoordinator.sendTyping(roomId, false)
         activeRoomTracker.leave(roomId)
         super.onCleared()
+    }
+
+    fun onScreenVisible() {
+        activeRoomTracker.enter(roomId)
+    }
+
+    fun onScreenHidden() {
+        activeRoomTracker.leave(roomId)
     }
 
     fun onInputChanged(text: String) {
@@ -243,12 +260,37 @@ class ChatRoomViewModel @Inject constructor(
     }
 
     fun addPeerToContacts() {
-        val peerId = peerUserId.value?.trim().orEmpty()
-        if (peerId.isEmpty()) return
         viewModelScope.launch {
-            contactsRepository.addContact(peerId)
+            var member = peer.value
+            if (member == null) {
+                refreshMentionCandidates()
+                member = peer.value
+            }
+            val resolved = member
+            val peerId = resolved?.id?.trim().orEmpty()
+            if (resolved == null || peerId.isEmpty()) {
+                _actionError.value = "Không thêm được vào danh bạ"
+                return@launch
+            }
+            val selfId = accessTokenHolder.userId
+            if (!selfId.isNullOrBlank() && peerId.equals(selfId, ignoreCase = true)) {
+                _actionError.value = "Không thể tự thêm mình vào danh bạ"
+                return@launch
+            }
+            val name = resolved.name.trim()
+                .takeIf { it.isNotBlank() && !it.equals("Bạn", ignoreCase = true) }
+                ?: route.title.trim().ifBlank { "Chat" }
+            contactsRepository.addContact(
+                ContactSummary(
+                    id = peerId,
+                    name = name,
+                    subtitle = resolved.username,
+                    isOnline = resolved.isOnline,
+                    username = resolved.username,
+                ),
+            )
                 .onSuccess {
-                    _infoMessage.value = "Đã thêm vào danh bạ"
+                    _infoMessage.value = "Đã thêm $name"
                     runCatching { contactsRepository.refreshContacts() }
                 }
                 .onFailure { error ->
@@ -280,9 +322,10 @@ class ChatRoomViewModel @Inject constructor(
     private suspend fun refreshMentionCandidates() {
         chatRepository.listMembers(roomId)
             .onSuccess { members ->
-                peerUserId.value = members.firstOrNull { !it.isMe }?.id
+                val selfId = accessTokenHolder.userId
+                peer.value = pickDirectPeer(members, selfId)
                 mentionCandidates.value = members
-                    .filterNot { it.isMe }
+                    .filterNot { it.isSelf(selfId) }
                     .mapNotNull { member ->
                         val username = member.username.trim()
                         if (username.isEmpty()) return@mapNotNull null
@@ -328,4 +371,19 @@ class ChatRoomViewModel @Inject constructor(
     companion object {
         private const val TYPING_HEARTBEAT_MS = 2_000L
     }
+}
+
+private fun GroupMember.isSelf(selfId: String?): Boolean {
+    if (isMe) return true
+    if (!selfId.isNullOrBlank() && id.equals(selfId, ignoreCase = true)) return true
+    return name.equals("Bạn", ignoreCase = true)
+}
+
+private fun pickDirectPeer(members: List<GroupMember>, selfId: String?): GroupMember? {
+    val others = members.filterNot { it.isSelf(selfId) }
+    if (others.size == 1) return others.first()
+    if (members.size == 2 && !selfId.isNullOrBlank()) {
+        return members.firstOrNull { !it.id.equals(selfId, ignoreCase = true) }
+    }
+    return others.firstOrNull()
 }

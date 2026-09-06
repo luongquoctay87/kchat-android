@@ -2,6 +2,7 @@ package com.kchat.data.network.repository
 
 import com.kchat.core.model.ContactSummary
 import com.kchat.data.network.api.KChatApi
+import com.kchat.data.network.apiMessage
 import com.kchat.data.network.apiResult
 import com.kchat.data.network.dto.CreateDirectRoomRequest
 import com.kchat.data.network.mapper.toModel
@@ -52,15 +53,65 @@ class NetworkContactsRepository @Inject constructor(
         }
     }
 
-    override suspend fun addContact(userId: String): Result<Unit> = apiResult("Không thêm được vào danh bạ") {
-        api.addContact(userId)
-        refreshContacts()
+    override suspend fun addContact(contact: ContactSummary): Result<Unit> {
+        val userId = contact.id.trim()
+        if (userId.isEmpty()) {
+            return Result.failure(IllegalArgumentException("Không thêm được vào danh bạ"))
+        }
+        val optimistic = contact.copy(id = userId, isContact = true)
+            .withAbsoluteAvatarUrl(apiBaseUrl)
+        upsertLocal(optimistic)
+        return runCatching {
+            val response = api.addContact(userId)
+            if (!response.isSuccessful) {
+                throw retrofit2.HttpException(response)
+            }
+            val added = response.body()?.toModel()
+                ?.withAbsoluteAvatarUrl(apiBaseUrl)
+                ?.copy(isContact = true)
+            if (added != null) {
+                upsertLocal(added)
+            }
+        }.fold(
+            onSuccess = { Result.success(Unit) },
+            onFailure = { error ->
+                if (error.isEmptyResponseBody()) {
+                    Result.success(Unit)
+                } else {
+                    contacts.value = contacts.value.filterNot {
+                        it.id.equals(userId, ignoreCase = true)
+                    }
+                    Result.failure(Exception(error.apiMessage("Không thêm được vào danh bạ")))
+                }
+            },
+        )
     }
 
     override suspend fun removeContact(userId: String): Result<Unit> = apiResult("Không xóa được khỏi danh bạ") {
         api.removeContact(userId)
-        contacts.value = contacts.value.filterNot { it.id == userId }
+        contacts.value = contacts.value.filterNot { it.id.equals(userId, ignoreCase = true) }
     }
+
+    private fun upsertLocal(contact: ContactSummary) {
+        contacts.value = (contacts.value.filterNot { it.id.equals(contact.id, ignoreCase = true) } + contact)
+            .sortedBy { it.name.lowercase() }
+    }
+}
+
+private fun Throwable.isEmptyResponseBody(): Boolean {
+    var current: Throwable? = this
+    while (current != null) {
+        if (current is java.io.EOFException) return true
+        val msg = current.message.orEmpty()
+        if (msg.contains("EOF", ignoreCase = true) ||
+            msg.contains("End of input", ignoreCase = true) ||
+            msg.contains("Expected start of the object", ignoreCase = true)
+        ) {
+            return true
+        }
+        current = current.cause
+    }
+    return false
 }
 
 private fun ContactSummary.withAbsoluteAvatarUrl(baseUrl: String): ContactSummary {

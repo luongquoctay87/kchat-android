@@ -13,6 +13,7 @@ import com.kchat.data.network.apiResult
 import com.kchat.data.network.dto.UpdateProfileRequest
 import com.kchat.data.network.dto.RegisterDeviceRequest
 import com.kchat.data.network.util.currentUtcOffsetMinutes
+import com.kchat.data.network.auth.ReplaceEmptyPreferences
 import com.kchat.data.repository.DeviceTokenStore
 import com.kchat.data.network.mapper.toModel
 import com.kchat.data.network.mapper.toRequest
@@ -41,7 +42,10 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import okhttp3.MultipartBody
 
-private val Context.profileDataStore by preferencesDataStore(name = "kchat_profile")
+private val Context.profileDataStore by preferencesDataStore(
+    name = "kchat_profile",
+    corruptionHandler = ReplaceEmptyPreferences,
+)
 
 @Singleton
 class NetworkSettingsRepository @Inject constructor(

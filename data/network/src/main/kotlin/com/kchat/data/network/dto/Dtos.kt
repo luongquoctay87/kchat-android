@@ -2,6 +2,7 @@ package com.kchat.data.network.dto
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonNames
 
 @Serializable
 data class LoginRequest(
@@ -126,7 +127,9 @@ data class MessageDto(
     @SerialName("image_label") val imageLabel: String? = null,
     @SerialName("media_url") val mediaUrl: String? = null,
     @SerialName("sender_name") val senderName: String? = null,
-    @SerialName("is_mine") val isMine: Boolean = false,
+    @SerialName("is_mine")
+    @JsonNames("mine")
+    val isMine: Boolean = false,
     val time: String,
     @SerialName("created_at") val createdAt: Long? = null,
     @SerialName("reply_author") val replyAuthor: String? = null,
@@ -216,8 +219,12 @@ data class RoomMemberDto(
     val username: String = "",
     val name: String,
     val role: String = "member",
-    @SerialName("is_online") val isOnline: Boolean = false,
-    @SerialName("is_me") val isMe: Boolean = false,
+    @SerialName("is_online")
+    @JsonNames("online")
+    val isOnline: Boolean = false,
+    @SerialName("is_me")
+    @JsonNames("me")
+    val isMe: Boolean = false,
 )
 
 @Serializable

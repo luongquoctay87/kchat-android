@@ -83,6 +83,10 @@ class SessionViewModel @Inject constructor(
         pinLockStore.lock()
     }
 
+    fun onPinLockShown() {
+        activeRoomTracker.clear()
+    }
+
     fun onAppForegrounded() {
         appForegroundTracker.onForeground()
         if (gate.value != SessionGate.Login && gate.value != SessionGate.Loading) {

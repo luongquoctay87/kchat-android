@@ -18,7 +18,10 @@ import kotlinx.coroutines.flow.onEach
 import javax.inject.Inject
 import javax.inject.Singleton
 
-private val Context.tokenDataStore: DataStore<Preferences> by preferencesDataStore(name = "kchat_tokens")
+private val Context.tokenDataStore: DataStore<Preferences> by preferencesDataStore(
+    name = "kchat_tokens",
+    corruptionHandler = ReplaceEmptyPreferences,
+)
 
 @Singleton
 class DataStoreTokenStore @Inject constructor(

@@ -161,6 +161,7 @@ class MainActivity : ComponentActivity() {
                                     val pinLockViewModel: PinLockViewModel = hiltViewModel()
                                     val pinState by pinLockViewModel.uiState.collectAsStateWithLifecycle()
                                     LaunchedEffect(Unit) {
+                                        vm.onPinLockShown()
                                         pinLockViewModel.onVisible()
                                     }
                                     PinLockScreen(

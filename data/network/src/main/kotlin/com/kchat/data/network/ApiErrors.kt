@@ -75,6 +75,8 @@ private fun Throwable.isNetworkUnavailable(): Boolean {
 private fun localizeApiMessage(message: String?): String? {
     if (message.isNullOrBlank()) return null
     return when {
+        message.contains("Không thể tự thêm mình", ignoreCase = true) ->
+            "Không thể tự thêm mình vào danh bạ"
         message.contains("Current password is incorrect", ignoreCase = true) ->
             "Mật khẩu hiện tại không đúng"
         message.contains("upper, lower, digit", ignoreCase = true) ||
