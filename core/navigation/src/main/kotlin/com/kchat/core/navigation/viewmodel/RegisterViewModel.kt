@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.kchat.core.model.PasswordRules
 import com.kchat.core.model.RegisterValidation
 import com.kchat.data.repository.AuthRepository
-import com.kchat.data.repository.SessionCoordinator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -37,7 +36,6 @@ data class RegisterUiState(
 @HiltViewModel
 class RegisterViewModel @Inject constructor(
     private val authRepository: AuthRepository,
-    private val sessionCoordinator: SessionCoordinator,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(RegisterUiState())
     val uiState = _uiState.asStateFlow()
@@ -183,13 +181,6 @@ class RegisterViewModel @Inject constructor(
                         username = parsed.username,
                         password = state.password,
                     ).onSuccess {
-                        try {
-                            sessionCoordinator.onAuthenticated()
-                        } catch (e: kotlinx.coroutines.CancellationException) {
-                            throw e
-                        } catch (_: Exception) {
-                            // Tokens already saved — bootstrap is best-effort.
-                        }
                         _uiState.update {
                             it.copy(
                                 isVerifyingOtp = false,

@@ -16,7 +16,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.content.Intent
 import android.widget.Toast
@@ -40,7 +40,6 @@ import androidx.navigation.toRoute
 import com.kchat.core.design.KChatAppearance
 import com.kchat.core.ui.KChatScaffold
 import com.kchat.core.ui.KChatTab
-import com.kchat.core.ui.components.MockNotificationBanner
 import com.kchat.core.ui.components.SheetCancelRow
 import com.kchat.core.ui.components.SheetHandle
 import com.kchat.core.ui.components.SheetOptionRow
@@ -96,7 +95,6 @@ import com.kchat.core.ui.screens.settings.PrivacyScreen
 import com.kchat.core.ui.screens.settings.DmPrivacyPolicy
 import com.kchat.core.ui.screens.settings.QuietHours
 import com.kchat.core.ui.screens.settings.ProfileScreen
-import com.kchat.core.ui.screens.settings.isActiveNow
 import com.kchat.data.repository.PushNavigationStore
 
 @Composable
@@ -107,11 +105,11 @@ fun KChatNavHost(
     modifier: Modifier = Modifier,
     startDestination: KChatRoute = KChatRoute.Main,
     debugBackendLabel: String? = null,
-    /** UI-only mock chrome (push banner, etc.) — only when USE_FAKE_DATA */
-    showMockChrome: Boolean = false,
     pushNavigationStore: PushNavigationStore? = null,
     /** Navigate to room from push only when user session is ready (not login/loading). */
     enablePushNavigation: Boolean = false,
+    /** False under PIN lock so a covered chat does not swallow notifications. */
+    roomInteractive: Boolean = true,
 ) {
     val activity = LocalContext.current as ComponentActivity
     val settingsViewModel: SettingsViewModel = hiltViewModel(viewModelStoreOwner = activity)
@@ -138,6 +136,31 @@ fun KChatNavHost(
                 launchSingleTop = true
             }
             store.consume()
+        }
+    }
+
+    LaunchedEffect(pushNavigationStore, enablePushNavigation) {
+        val store = pushNavigationStore ?: return@LaunchedEffect
+        store.pendingCall.collect { target ->
+            if (target == null || !enablePushNavigation) return@collect
+            val activeId = incomingCallViewModel.activeCallId()
+            if (activeId == target.callId || incomingCallViewModel.isBusy()) {
+                store.consumeCall()
+                return@collect
+            }
+            val callTypeStr = target.callType.ifBlank { CallType.IncomingVoice.name }
+            val name = target.callerName.ifBlank { "Cuộc gọi đến" }
+            store.consumeCall()
+            navController.navigate(
+                KChatRoute.Call(
+                    roomId = target.roomId,
+                    contactName = name,
+                    callType = callTypeStr,
+                    callId = target.callId,
+                ),
+            ) {
+                launchSingleTop = true
+            }
         }
     }
 
@@ -315,7 +338,6 @@ fun KChatNavHost(
                 navController = navController,
                 appearance = appearance,
                 onAppearanceChange = ::handleAppearanceChange,
-                showMockChrome = showMockChrome,
                 username = profile?.username.orEmpty(),
                 displayName = profile?.displayName.orEmpty(),
                 avatarUrl = profile?.avatarUrl,
@@ -325,9 +347,15 @@ fun KChatNavHost(
         composable<KChatRoute.Chat> { entry ->
             val route = entry.toRoute<KChatRoute.Chat>()
             val viewModel: ChatRoomViewModel = hiltViewModel()
-            DisposableEffect(viewModel, viewModel.roomId) {
-                viewModel.onScreenVisible()
-                onDispose { viewModel.onScreenHidden() }
+            // Nav 2.8 keeps Chat composed on the back stack (CREATED, not disposed).
+            // Only RESUMED + unlocked counts as "viewing" — otherwise tray notify is swallowed.
+            LifecycleResumeEffect(viewModel.roomId, roomInteractive) {
+                if (roomInteractive) {
+                    viewModel.onScreenVisible()
+                }
+                onPauseOrDispose {
+                    viewModel.onScreenHidden()
+                }
             }
             val messages by viewModel.messages.collectAsStateWithLifecycle()
             val roomMeta by viewModel.roomMeta.collectAsStateWithLifecycle()
@@ -765,7 +793,6 @@ private fun MainTabsScreen(
     appearance: KChatAppearance,
     onAppearanceChange: (KChatAppearance) -> Unit,
     modifier: Modifier = Modifier,
-    showMockChrome: Boolean = false,
     username: String = "",
     displayName: String = "",
     avatarUrl: String? = null,
@@ -773,21 +800,15 @@ private fun MainTabsScreen(
 ) {
     var currentTab by rememberSaveable { mutableStateOf(KChatTab.Chat) }
     var showCreateSheet by rememberSaveable { mutableStateOf(false) }
-    var showMockPush by rememberSaveable { mutableStateOf(true) }
 
     val activity = LocalContext.current as ComponentActivity
     val sessionViewModel: SessionViewModel = hiltViewModel(viewModelStoreOwner = activity)
-    val settingsViewModel: SettingsViewModel = hiltViewModel(viewModelStoreOwner = activity)
-    val settings by settingsViewModel.settings.collectAsStateWithLifecycle()
     val chatListViewModel: ChatListViewModel = hiltViewModel()
     val rooms by chatListViewModel.rooms.collectAsStateWithLifecycle()
     val chatListItems by chatListViewModel.items.collectAsStateWithLifecycle()
     val chatUnreadCount = rooms.sumOf { it.unreadCount.coerceAtLeast(0) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    val quietHours = settings?.toQuietHours() ?: QuietHours()
-    val nowHour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
-    val suppressPush = !(settings?.pushEnabled ?: true) || quietHours.isActiveNow(nowHour)
 
     LaunchedEffect(currentTab) {
         if (currentTab == KChatTab.Chat) {
@@ -849,16 +870,6 @@ private fun MainTabsScreen(
                 .padding(padding)
                 .fillMaxSize(),
         ) {
-            if (showMockChrome && showMockPush && !suppressPush && currentTab == KChatTab.Chat) {
-                MockNotificationBanner(
-                    title = "k-chat · Nguyễn Văn A",
-                    body = "Gửi file invoice.pdf",
-                    onClick = {
-                        showMockPush = false
-                        navController.navigate(KChatRoute.Chat("room-1", "Nguyễn Văn A"))
-                    },
-                )
-            }
             Box(modifier = Modifier.fillMaxSize()) {
                 when (currentTab) {
                     KChatTab.Chat -> {

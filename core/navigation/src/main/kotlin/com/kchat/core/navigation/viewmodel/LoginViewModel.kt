@@ -3,7 +3,6 @@ package com.kchat.core.navigation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kchat.data.repository.AuthRepository
-import com.kchat.data.repository.SessionCoordinator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,7 +27,6 @@ sealed interface LoginAction {
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val authRepository: AuthRepository,
-    private val sessionCoordinator: SessionCoordinator,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState = _uiState.asStateFlow()
@@ -55,7 +53,6 @@ class LoginViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             authRepository.login(identifier, password)
                 .onSuccess {
-                    runCatching { sessionCoordinator.onAuthenticated() }
                     _uiState.update { it.copy(isLoading = false, isSuccess = true) }
                 }
                 .onFailure { e ->

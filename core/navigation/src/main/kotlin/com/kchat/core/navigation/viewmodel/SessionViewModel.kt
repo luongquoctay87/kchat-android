@@ -52,21 +52,18 @@ class SessionViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            if (tokenStore.getAccessToken() != null) {
-                try {
-                    sessionCoordinator.onAuthenticated()
-                } catch (e: kotlinx.coroutines.CancellationException) {
-                    throw e
-                } catch (_: Exception) {
-                    // Startup bootstrap is best-effort; invalid session clears via authenticator.
-                }
-            }
-        }
-        viewModelScope.launch {
             authRepository.isLoggedIn.distinctUntilChanged().collect { loggedIn ->
                 if (!loggedIn) {
                     runCatching { realtimeCoordinator.disconnect() }
                     pinLockStore.clear()
+                } else {
+                    try {
+                        sessionCoordinator.onAuthenticated()
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                        // Startup bootstrap is best-effort; invalid session clears via authenticator.
+                    }
                 }
             }
         }

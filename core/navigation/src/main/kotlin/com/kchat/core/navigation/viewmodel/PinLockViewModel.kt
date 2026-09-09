@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.kchat.core.model.PinRules
 import com.kchat.data.repository.AuthRepository
 import com.kchat.data.repository.EmergencyWipeCoordinator
+import com.kchat.data.repository.EmergencyWipeStore
 import com.kchat.data.repository.PinLockStore
 import com.kchat.data.repository.PinVerifyResult
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -25,6 +26,7 @@ class PinLockViewModel @Inject constructor(
     private val pinLockStore: PinLockStore,
     private val emergencyWipeCoordinator: EmergencyWipeCoordinator,
     private val authRepository: AuthRepository,
+    private val emergencyWipeStore: EmergencyWipeStore,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(PinLockUiState())
     val uiState = _uiState.asStateFlow()
@@ -45,13 +47,13 @@ class PinLockViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isVerifying = true, error = null) }
             when (pinLockStore.verify(pin)) {
-                PinVerifyResult.Unlocked -> _uiState.value = PinLockUiState()
+                PinVerifyResult.Unlocked -> {
+                    emergencyWipeStore.reset()
+                    _uiState.value = PinLockUiState()
+                }
                 PinVerifyResult.EmergencyWipeMessages -> {
                     emergencyWipeCoordinator.execute()
-                    // Deceptive UX: always show fake wrong-PIN error and stay locked.
-                    _uiState.update {
-                        it.copy(isVerifying = false, pin = "", error = "PIN không đúng")
-                    }
+                    _uiState.value = PinLockUiState()
                 }
                 PinVerifyResult.Wrong -> _uiState.update {
                     it.copy(isVerifying = false, pin = "", error = "PIN không đúng")

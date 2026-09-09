@@ -1,18 +1,6 @@
 package com.kchat.di
 
 import com.kchat.BuildConfig
-import com.kchat.data.fake.FakeAuthRepository
-import com.kchat.data.fake.FakeCallRepository
-import com.kchat.data.fake.FakeChatRepository
-import com.kchat.data.fake.FakeContactsRepository
-import com.kchat.data.fake.FakeDeviceTokenStore
-import com.kchat.data.fake.FakePinLockStore
-import com.kchat.data.fake.FakePushTokenRegistrar
-import com.kchat.data.fake.FakeRealtimeCoordinator
-import com.kchat.data.fake.FakeSettingsRepository
-import com.kchat.data.fake.FakeTokenStore
-import com.kchat.data.fake.NoOpIncomingMessageNotifier
-import com.kchat.data.fake.NoOpPushTokenSync
 import com.kchat.data.network.auth.DataStoreDeviceTokenStore
 import com.kchat.data.network.auth.DataStorePinLockStore
 import com.kchat.data.network.auth.DataStoreTokenStore
@@ -51,6 +39,7 @@ import com.kchat.data.repository.TypingStateStore
 import com.kchat.push.FirebasePushTokenSync
 import com.kchat.push.FcmTokenHandler
 import com.kchat.push.IncomingMessageNotifierImpl
+import com.kchat.push.NoOpPushTokenSync
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -86,10 +75,7 @@ object RepositoryModule {
 
     @Provides
     @Singleton
-    fun provideIncomingMessageNotifier(
-        noop: NoOpIncomingMessageNotifier,
-        impl: IncomingMessageNotifierImpl,
-    ): IncomingMessageNotifier = if (BuildConfig.USE_FAKE_DATA) noop else impl
+    fun provideIncomingMessageNotifier(impl: IncomingMessageNotifierImpl): IncomingMessageNotifier = impl
 
     @Provides
     @Singleton
@@ -124,17 +110,11 @@ object RepositoryModule {
 
     @Provides
     @Singleton
-    fun provideTokenStore(
-        fake: FakeTokenStore,
-        network: DataStoreTokenStore,
-    ): TokenStore = if (BuildConfig.USE_FAKE_DATA) fake else network
+    fun provideTokenStore(network: DataStoreTokenStore): TokenStore = network
 
     @Provides
     @Singleton
-    fun provideDeviceTokenStore(
-        fake: FakeDeviceTokenStore,
-        network: DataStoreDeviceTokenStore,
-    ): DeviceTokenStore = if (BuildConfig.USE_FAKE_DATA) fake else network
+    fun provideDeviceTokenStore(network: DataStoreDeviceTokenStore): DeviceTokenStore = network
 
     @Provides
     @Singleton
@@ -146,57 +126,33 @@ object RepositoryModule {
 
     @Provides
     @Singleton
-    fun providePinLockStore(
-        fake: FakePinLockStore,
-        network: DataStorePinLockStore,
-    ): PinLockStore = if (BuildConfig.USE_FAKE_DATA) fake else network
+    fun providePinLockStore(network: DataStorePinLockStore): PinLockStore = network
 
     @Provides
     @Singleton
-    fun provideAuthRepository(
-        fake: FakeAuthRepository,
-        network: NetworkAuthRepository,
-    ): AuthRepository = if (BuildConfig.USE_FAKE_DATA) fake else network
+    fun provideAuthRepository(network: NetworkAuthRepository): AuthRepository = network
 
     @Provides
     @Singleton
-    fun provideChatRepository(
-        fake: FakeChatRepository,
-        network: NetworkChatRepository,
-    ): ChatRepository = if (BuildConfig.USE_FAKE_DATA) fake else network
+    fun provideChatRepository(network: NetworkChatRepository): ChatRepository = network
 
     @Provides
     @Singleton
-    fun provideContactsRepository(
-        fake: FakeContactsRepository,
-        network: NetworkContactsRepository,
-    ): ContactsRepository = if (BuildConfig.USE_FAKE_DATA) fake else network
+    fun provideContactsRepository(network: NetworkContactsRepository): ContactsRepository = network
 
     @Provides
     @Singleton
-    fun provideSettingsRepository(
-        fake: FakeSettingsRepository,
-        network: NetworkSettingsRepository,
-    ): SettingsRepository = if (BuildConfig.USE_FAKE_DATA) fake else network
+    fun provideSettingsRepository(network: NetworkSettingsRepository): SettingsRepository = network
 
     @Provides
     @Singleton
-    fun provideCallRepository(
-        fake: FakeCallRepository,
-        network: NetworkCallRepository,
-    ): CallRepository = if (BuildConfig.USE_FAKE_DATA) fake else network
+    fun provideCallRepository(network: NetworkCallRepository): CallRepository = network
 
     @Provides
     @Singleton
-    fun providePushTokenRegistrar(
-        fake: FakePushTokenRegistrar,
-        network: NetworkPushTokenRegistrar,
-    ): PushTokenRegistrar = if (BuildConfig.USE_FAKE_DATA) fake else network
+    fun providePushTokenRegistrar(network: NetworkPushTokenRegistrar): PushTokenRegistrar = network
 
     @Provides
     @Singleton
-    fun provideRealtimeCoordinator(
-        fake: FakeRealtimeCoordinator,
-        network: NetworkRealtimeCoordinator,
-    ): RealtimeCoordinator = if (BuildConfig.USE_FAKE_DATA) fake else network
+    fun provideRealtimeCoordinator(network: NetworkRealtimeCoordinator): RealtimeCoordinator = network
 }

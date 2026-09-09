@@ -19,7 +19,10 @@ class FcmTokenHandler @Inject constructor(
             return false
         }
         return pushTokenRegistrar.registerFcmToken(token).fold(
-            onSuccess = { true },
+            onSuccess = {
+                Log.i(TAG, "FCM token registered with backend: prefix=${token.take(15)}")
+                true
+            },
             onFailure = {
                 Log.w(TAG, "FCM register failed", it)
                 deviceTokenStore.savePendingFcmToken(token)

@@ -25,13 +25,12 @@ class NetworkContactsRepository @Inject constructor(
     override fun observeContacts(): Flow<List<ContactSummary>> = contacts.asStateFlow()
 
     override suspend fun clearForEmergencyWipe() {
-        contacts.value = emptyList()
+        // Keep contacts intact during message wipe
     }
 
     override fun restoreAfterLogout() = Unit
 
     override suspend fun refreshContacts() {
-        if (emergencyWipeStore.isActiveNow()) return
         try {
             contacts.value = api.getContacts().map { dto ->
                 dto.toModel().withAbsoluteAvatarUrl(apiBaseUrl).copy(isContact = true)

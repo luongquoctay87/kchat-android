@@ -3,6 +3,7 @@ package com.kchat.data.network.ws
 import com.kchat.data.repository.AccessTokenHolder
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.callbackFlow
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -98,7 +99,12 @@ class KChatWebSocketClient(
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 opened = false
                 socketRef.compareAndSet(webSocket, null)
-                trySend(WsEvent.Error(t.message ?: "WebSocket lỗi"))
+                val msg = if (response?.code == 401) {
+                    "401 Unauthorized"
+                } else {
+                    t.message ?: "WebSocket lỗi"
+                }
+                trySend(WsEvent.Error(msg))
                 // Close without cause — otherwise collectors throw and crash the app.
                 close()
             }
@@ -113,7 +119,7 @@ class KChatWebSocketClient(
                 runCatching { socket.close(1000, "Client closed") }
             }
         }
-    }
+    }.buffer(512)
 
     fun send(rawJson: String): Boolean {
         val ws = socketRef.get() ?: return false

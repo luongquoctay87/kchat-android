@@ -1,4 +1,4 @@
-package com.kchat.data.fake
+package com.kchat.push
 
 import com.kchat.data.repository.PushTokenSync
 import javax.inject.Inject

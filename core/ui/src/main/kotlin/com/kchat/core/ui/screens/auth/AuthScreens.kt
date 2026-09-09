@@ -83,6 +83,7 @@ fun LoginScreen(
         ) {
             KChatWordmark(
                 size = if (keyboardOpen) WordmarkSize.Compact else WordmarkSize.Hero,
+                showText = false,
             )
             if (!keyboardOpen) {
                 debugBackendLabel?.let { label ->

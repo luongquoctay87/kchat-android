@@ -75,6 +75,7 @@ class MainActivity : ComponentActivity() {
                 mutableStateOf(KChatAppearance())
             }
                     var notificationPermissionRequested by rememberSaveable { mutableStateOf(false) }
+                    var notificationPermissionRequestedOnMain by rememberSaveable { mutableStateOf(false) }
                     val notificationPermissionLauncher = rememberLauncherForActivityResult(
                         ActivityResultContracts.RequestPermission(),
                     ) { granted ->
@@ -105,11 +106,10 @@ class MainActivity : ComponentActivity() {
                             val gate by vm.gate.collectAsStateWithLifecycle()
                             val navController = rememberNavController()
 
-                            // Ask on Login (fresh install) — not only after Main — so permission
-                            // is decided before the first background message can arrive.
-                            LaunchedEffect(gate, notificationPermissionRequested) {
+                            // Ask on Login (fresh install) and re-check on Main if not granted,
+                            // so permission is decided before messages arrive.
+                            LaunchedEffect(gate) {
                                 if (gate == SessionGate.Loading) return@LaunchedEffect
-                                if (notificationPermissionRequested) return@LaunchedEffect
                                 if (!BuildConfig.FCM_ENABLED) return@LaunchedEffect
                                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
                                     return@LaunchedEffect
@@ -119,7 +119,19 @@ class MainActivity : ComponentActivity() {
                                     Manifest.permission.POST_NOTIFICATIONS,
                                 ) == PackageManager.PERMISSION_GRANTED
                                 if (granted) return@LaunchedEffect
-                                notificationPermissionRequested = true
+
+                                val shouldAsk = when (gate) {
+                                    SessionGate.Login -> !notificationPermissionRequested
+                                    SessionGate.Main -> !notificationPermissionRequestedOnMain
+                                    else -> false
+                                }
+                                if (!shouldAsk) return@LaunchedEffect
+
+                                if (gate == SessionGate.Login) {
+                                    notificationPermissionRequested = true
+                                } else if (gate == SessionGate.Main) {
+                                    notificationPermissionRequestedOnMain = true
+                                }
                                 pinLockTransientLeave.begin()
                                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                             }
@@ -151,9 +163,9 @@ class MainActivity : ComponentActivity() {
                                             "staging" -> "Staging"
                                             else -> null // prod / release: ẩn
                                         },
-                                        showMockChrome = false,
                                         pushNavigationStore = pushNavigationStore,
                                         enablePushNavigation = current == SessionGate.Main,
+                                        roomInteractive = current == SessionGate.Main,
                                         modifier = Modifier.fillMaxSize(),
                                     )
                                 }
@@ -196,6 +208,20 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handlePushIntent(intent: Intent?) {
+        val callId = intent?.getStringExtra(PushNotificationHelper.EXTRA_CALL_ID)
+        if (!callId.isNullOrBlank()) {
+            val roomId = intent.getStringExtra(PushNotificationHelper.EXTRA_ROOM_ID).orEmpty()
+            val callerName = intent.getStringExtra(PushNotificationHelper.EXTRA_CALLER_NAME).orEmpty()
+            val callType = intent.getStringExtra(PushNotificationHelper.EXTRA_CALL_TYPE).orEmpty()
+            pushNotificationHelper.cancelCallNotification(callId)
+            intent.removeExtra(PushNotificationHelper.EXTRA_CALL_ID)
+            intent.removeExtra(PushNotificationHelper.EXTRA_CALL_TYPE)
+            intent.removeExtra(PushNotificationHelper.EXTRA_CALLER_NAME)
+            // Push incoming call directly to signal bus so app shows the call screen
+            pushNavigationStore.requestCallNavigation(callId, roomId, callerName, callType)
+            return
+        }
+
         val roomId = intent?.getStringExtra(PushNotificationHelper.EXTRA_ROOM_ID) ?: return
         val title = intent.getStringExtra(PushNotificationHelper.EXTRA_ROOM_TITLE).orEmpty()
         pushNotificationHelper.handleNotificationTap(roomId, title)

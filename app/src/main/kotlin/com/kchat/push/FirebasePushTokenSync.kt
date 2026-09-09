@@ -1,5 +1,6 @@
 package com.kchat.push
 
+import android.util.Log
 import com.google.firebase.messaging.FirebaseMessaging
 import com.kchat.BuildConfig
 import com.kchat.data.repository.PushTokenSync
@@ -16,6 +17,9 @@ class FirebasePushTokenSync @Inject constructor(
         return runCatching {
             val token = FirebaseMessaging.getInstance().token.await()
             fcmTokenHandler.onNewToken(token)
-        }.getOrDefault(false)
+        }.getOrElse {
+            Log.w("KChatFCM", "syncCurrentToken failed", it)
+            false
+        }
     }
 }

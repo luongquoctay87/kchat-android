@@ -4,10 +4,6 @@ import com.kchat.core.model.CallInfo
 import com.kchat.core.model.RtcIceServer
 
 interface CallRepository {
-    /** True when peer signaling is simulated (fake data mode). */
-    val usesSimulatedPeer: Boolean
-        get() = false
-
     suspend fun initiate(roomId: String, callType: String): Result<CallInfo>
 
     suspend fun listIncoming(): Result<List<CallInfo>> = Result.success(emptyList())

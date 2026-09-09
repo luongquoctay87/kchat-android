@@ -29,7 +29,7 @@ fun KChatTopBar(
         modifier = modifier,
         title = {
             when {
-                showWordmark -> KChatWordmark(size = WordmarkSize.Compact)
+                showWordmark -> KChatWordmark(size = WordmarkSize.Compact, showText = false)
                 subtitle != null && title != null -> {
                     Column {
                         Text(

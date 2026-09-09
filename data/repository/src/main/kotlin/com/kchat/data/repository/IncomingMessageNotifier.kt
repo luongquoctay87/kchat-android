@@ -10,4 +10,6 @@ interface IncomingMessageNotifier {
         message: ChatMessage,
         room: RoomSummary?,
     )
+
+    fun dismissCallNotification(callId: String) {}
 }

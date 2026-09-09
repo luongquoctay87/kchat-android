@@ -42,7 +42,6 @@ android {
         buildConfigField("String", "API_BASE_URL", "\"https://chat-api.example.com/\"")
         buildConfigField("String", "WS_BASE_URL", "\"wss://chat-api.example.com\"")
         buildConfigField("String", "APP_ENV", "\"prod\"")
-        buildConfigField("boolean", "USE_FAKE_DATA", "false")
         buildConfigField("boolean", "FCM_ENABLED", hasGoogleServices.toString())
     }
 
@@ -58,24 +57,24 @@ android {
             buildConfigField("String", "API_BASE_URL", "\"$kchatProdApiUrl\"")
             buildConfigField("String", "WS_BASE_URL", "\"$kchatProdWsUrl\"")
             buildConfigField("String", "APP_ENV", "\"prod\"")
-            buildConfigField("boolean", "USE_FAKE_DATA", "false")
             buildConfigField("boolean", "FCM_ENABLED", hasGoogleServices.toString())
         }
         debug {
-            // -Pkchat.env=local|staging (default staging)
+            // -Pkchat.env=local|staging|prod (default staging)
             val envRaw = (project.findProperty("kchat.env") as String?)?.lowercase()?.trim().orEmpty()
             val env = when (envRaw) {
                 "local", "dev" -> "local"
+                "prod", "production" -> "prod"
                 else -> "staging"
             }
             val (apiUrl, wsUrl) = when (env) {
                 "local" -> kchatLocalApiUrl to kchatLocalWsUrl
+                "prod" -> kchatProdApiUrl to kchatProdWsUrl
                 else -> kchatStagingApiUrl to kchatStagingWsUrl
             }
             buildConfigField("String", "API_BASE_URL", "\"$apiUrl\"")
             buildConfigField("String", "WS_BASE_URL", "\"$wsUrl\"")
             buildConfigField("String", "APP_ENV", "\"$env\"")
-            buildConfigField("boolean", "USE_FAKE_DATA", "false")
             buildConfigField("boolean", "FCM_ENABLED", hasGoogleServices.toString())
         }
     }
@@ -101,7 +100,6 @@ dependencies {
     implementation(project(":core:ui"))
     implementation(project(":core:navigation"))
     implementation(project(":data:repository"))
-    implementation(project(":data:fake"))
     implementation(project(":data:local"))
     implementation(project(":data:network"))
 

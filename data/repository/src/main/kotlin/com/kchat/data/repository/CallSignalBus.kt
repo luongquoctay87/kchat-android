@@ -3,6 +3,7 @@ package com.kchat.data.repository
 import com.kchat.core.model.CallInfo
 import com.kchat.core.model.CallRealtimeEvent
 import java.util.concurrent.atomic.AtomicReference
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -12,10 +13,11 @@ import kotlinx.coroutines.flow.asSharedFlow
  * Fan-out for call lifecycle + ICE signals from the WebSocket layer to UI / WebRTC.
  * Also tracks whether this device is already in a call UI (busy for incoming nav).
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class CallSignalBus {
     private val _events = MutableSharedFlow<CallRealtimeEvent>(
-        replay = 0,
-        extraBufferCapacity = 64,
+        replay = 16,
+        extraBufferCapacity = 128,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
     val events: SharedFlow<CallRealtimeEvent> = _events.asSharedFlow()
@@ -58,6 +60,7 @@ class CallSignalBus {
         val current = activeCallId.get() ?: return
         if (callId.isNullOrBlank() || current == callId || current == "pending") {
             activeCallId.compareAndSet(current, null)
+            _events.resetReplayCache()
         }
     }
 

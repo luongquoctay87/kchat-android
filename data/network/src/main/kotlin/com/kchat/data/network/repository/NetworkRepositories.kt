@@ -12,12 +12,15 @@ import com.kchat.core.model.mergeWith
 import com.kchat.core.model.withEnrichedReply
 import com.kchat.core.model.RoomMeta
 import com.kchat.core.model.RoomSummary
+import com.kchat.core.model.RoomTitles
 import com.kchat.core.model.SearchResult
 import com.kchat.data.local.ChatLocalDataSource
 import com.kchat.data.network.api.KChatApi
 import com.kchat.data.network.apiMessage
 import com.kchat.data.network.apiResult
+import com.kchat.data.network.auth.JwtPayload
 import com.kchat.data.network.dto.AddMembersRequest
+import com.kchat.data.network.dto.AuthResponse
 import com.kchat.data.network.dto.CallEventPayload
 import com.kchat.data.network.dto.CreateGroupRequest
 import com.kchat.data.network.dto.DeviceSessionRevokedPayload
@@ -34,6 +37,7 @@ import com.kchat.data.network.dto.MessageNewPayload
 import com.kchat.data.network.dto.MessagesReadPayload
 import com.kchat.data.network.dto.PinMessageRequest
 import com.kchat.data.network.dto.ReactMessageRequest
+import com.kchat.data.network.dto.RefreshRequest
 import com.kchat.data.network.dto.RegisterDeviceRequest
 import com.kchat.data.network.util.currentUtcOffsetMinutes
 import com.kchat.data.network.dto.RegisterRequest
@@ -73,6 +77,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.booleanOrNull
@@ -80,7 +85,12 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -345,7 +355,7 @@ class NetworkChatRepository @Inject constructor(
     ) {
         val id = roomId.trim().lowercase()
         if (id.isBlank()) return
-        localDataSource.ensureRoomStub(id, roomTitle)
+        localDataSource.ensureRoomStub(id, RoomTitles.resolve(roomTitle, senderName))
         val remoteId = messageId?.trim().orEmpty()
         if (remoteId.isNotEmpty()) {
             val createdAt = createdAtMillis?.takeIf { it > 0L } ?: System.currentTimeMillis()
@@ -362,13 +372,11 @@ class NetworkChatRepository @Inject constructor(
                 ),
             )
         }
-        if (emergencyWipeStore.isActiveNow()) return
         refreshMessages(id)
         refreshRooms()
     }
 
     override suspend fun refreshRooms() {
-        if (emergencyWipeStore.isActiveNow()) return
         try {
             val rooms = api.getRooms().map {
                 it.toModel().withAbsoluteAvatarUrl(apiBaseUrl).let { room ->
@@ -384,7 +392,6 @@ class NetworkChatRepository @Inject constructor(
     }
 
     override suspend fun refreshMessages(roomId: String, limit: Int) {
-        if (emergencyWipeStore.isActiveNow()) return
         val id = roomId.trim().lowercase()
         try {
             val mapped = api.getMessages(id, limit = limit)
@@ -550,8 +557,10 @@ private fun pushTimeLabel(createdAtMillis: Long): String =
 @Singleton
 class NetworkPushTokenRegistrar @Inject constructor(
     private val api: KChatApi,
+    private val tokenStore: TokenStore,
 ) : PushTokenRegistrar {
     override suspend fun registerFcmToken(token: String): Result<Unit> = runCatching {
+        tokenStore.getAccessToken()
         api.registerDevice(
             RegisterDeviceRequest(
                 fcmToken = token,
@@ -607,17 +616,33 @@ class NetworkRealtimeCoordinator @Inject constructor(
     }
 
     override fun connect() {
+        if (webSocketClient.isConnected && connectionJob?.isActive == true) {
+            scope.launch {
+                runCatching { chatRepository.refreshRooms() }
+                runCatching { contactsRepository.refreshContacts() }
+                runCatching { refreshIncomingCalls() }
+            }
+            return
+        }
         connectionJob?.cancel()
         connectionJob = scope.launch {
             var backoffMs = WS_RECONNECT_MIN_MS
             while (isActive) {
                 runCatching {
+                    ensureValidAccessToken()
                     webSocketClient.connect().collect { event ->
                         when (event) {
                             is WsEvent.Message -> handleMessage(event.raw)
                             is WsEvent.Connected -> {
                                 backoffMs = WS_RECONNECT_MIN_MS
                                 onSocketConnected()
+                            }
+                            is WsEvent.Error -> {
+                                if (event.message.contains("401") ||
+                                    event.message.contains("Unauthorized", ignoreCase = true)
+                                ) {
+                                    refreshTokenInternal()
+                                }
                             }
                             else -> Unit
                         }
@@ -628,6 +653,49 @@ class NetworkRealtimeCoordinator @Inject constructor(
                 backoffMs = (backoffMs * 2).coerceAtMost(WS_RECONNECT_MAX_MS)
             }
         }
+    }
+
+    private suspend fun ensureValidAccessToken(): Boolean {
+        var current = accessTokenHolder.accessToken
+        if (current.isNullOrBlank()) {
+            current = tokenStore.getAccessToken()
+        }
+        if (!current.isNullOrBlank() && !JwtPayload.isExpiredOrExpiring(current)) {
+            return true
+        }
+        return refreshTokenInternal()
+    }
+
+    private suspend fun refreshTokenInternal(): Boolean {
+        val tokens = tokenStore.currentTokens() ?: return false
+        val refreshUrl = apiBaseUrl.trimEnd('/') + "/auth/refresh"
+        val bodyJson = json.encodeToString(RefreshRequest(tokens.refreshToken))
+        val refreshRequestBuilder = Request.Builder()
+            .url(refreshUrl)
+            .post(bodyJson.toRequestBody("application/json".toMediaType()))
+        val deviceToken = runCatching { deviceTokenStore.getOrCreate() }.getOrNull()
+        if (!deviceToken.isNullOrBlank()) {
+            refreshRequestBuilder.header("X-Device-Token", deviceToken)
+        }
+        val client = OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .build()
+        return runCatching {
+            client.newCall(refreshRequestBuilder.build()).execute().use { res ->
+                if (!res.isSuccessful) {
+                    if (res.code == 401 || res.code == 403) {
+                        tokenStore.clear()
+                    }
+                    false
+                } else {
+                    val body = res.body?.string().orEmpty()
+                    val auth = json.decodeFromString<AuthResponse>(body)
+                    tokenStore.saveTokens(AuthTokens(auth.accessToken, auth.refreshToken))
+                    true
+                }
+            }
+        }.getOrDefault(false)
     }
 
     private suspend fun onSocketConnected() {
@@ -823,12 +891,6 @@ class NetworkRealtimeCoordinator @Inject constructor(
                     .withAbsoluteMediaUrl(apiBaseUrl)
                     .withEnrichedReply(existing)
                 val viewing = activeRoomTracker.isActive(roomId)
-                if (localDataSource.getRoom(roomId) == null) {
-                    localDataSource.ensureRoomStub(
-                        roomId,
-                        message.senderName?.takeIf { it.isNotBlank() } ?: "Chat",
-                    )
-                }
                 localDataSource.appendMessageAndTouchRoom(
                     roomId = roomId,
                     message = message,
@@ -838,16 +900,9 @@ class NetworkRealtimeCoordinator @Inject constructor(
                 if (viewing && !message.isMine) {
                     scheduleMarkRead(roomId)
                 }
-                if (!viewing && !message.isMine) {
+                if (!message.isMine) {
                     val room = localDataSource.getRoom(roomId)
                     incomingMessageNotifier.onIncomingMessage(roomId, message, room)
-                } else if (!viewing && message.isMine && !message.senderName.isNullOrBlank()) {
-                    val room = localDataSource.getRoom(roomId)
-                    incomingMessageNotifier.onIncomingMessage(
-                        roomId,
-                        message.copy(isMine = false),
-                        room,
-                    )
                 }
             }
             WsEventType.MESSAGE_UPDATED -> {
@@ -919,7 +974,7 @@ class NetworkRealtimeCoordinator @Inject constructor(
         tokenStore.clear()
     }
 
-    private fun handleCallEvent(type: String, payloadNode: kotlinx.serialization.json.JsonObject?) {
+    private suspend fun handleCallEvent(type: String, payloadNode: kotlinx.serialization.json.JsonObject?) {
         if (payloadNode == null) {
             android.util.Log.w("KChatCall", "WS $type missing payload")
             return
@@ -937,7 +992,22 @@ class NetworkRealtimeCoordinator @Inject constructor(
             WsEventType.CALL_ENDED -> CallRealtimeEvent.Ended(call)
             else -> return
         }
+        // Publish call signal immediately to bus so UI and WebRTC react with zero latency
         callSignalBus.publish(event)
+        if (type == WsEventType.CALL_ENDED || type == WsEventType.CALL_REJECTED) {
+            incomingMessageNotifier.dismissCallNotification(call.id)
+        }
+        val selfId = accessTokenHolder.userId?.trim()?.lowercase()
+        val peerName = if (!selfId.isNullOrBlank() && call.initiatorId.trim().lowercase() == selfId) {
+            call.calleeName
+        } else {
+            call.initiatorName
+        }
+        scope.launch {
+            runCatching {
+                localDataSource.ensureRoomStub(call.roomId.trim().lowercase(), peerName)
+            }
+        }
     }
 
     private fun handleIceEvent(type: String, payloadNode: kotlinx.serialization.json.JsonObject?) {

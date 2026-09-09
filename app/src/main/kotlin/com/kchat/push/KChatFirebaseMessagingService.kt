@@ -38,19 +38,52 @@ class KChatFirebaseMessagingService : FirebaseMessagingService() {
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
-        if (BuildConfig.USE_FAKE_DATA || !BuildConfig.FCM_ENABLED) return
+        if (!BuildConfig.FCM_ENABLED) return
+        try {
+            handleMessageReceived(message)
+        } catch (ex: UninitializedPropertyAccessException) {
+            android.util.Log.w("KChatPush", "FCM before Hilt inject", ex)
+        }
+    }
+
+    private fun handleMessageReceived(message: RemoteMessage) {
         val data = message.data
         val type = data["type"]
+
+        if (type == "call_incoming") {
+            val callId = data["call_id"] ?: return
+            val roomId = data["room_id"] ?: ""
+            val callerName = data["caller_name"]?.takeIf { it.isNotBlank() } ?: "k-chat"
+            val isVideo = "video".equals(data["call_type"], ignoreCase = true)
+            pushNotificationHelper.showIncomingCallNotification(
+                callId = callId,
+                roomId = roomId,
+                callerName = callerName,
+                isVideo = isVideo,
+            )
+            return
+        }
+
+        if (type == "call_ended") {
+            val callId = data["call_id"] ?: return
+            pushNotificationHelper.cancelCallNotification(callId)
+            return
+        }
+
         if (!type.isNullOrBlank() && type != "message_new") return
 
         val roomId = data["room_id"] ?: return
-        // Suppress only when user is viewing this room in foreground (ViewModel may survive on Home).
-        if (appForegroundTracker.isForeground && activeRoomTracker.isActive(roomId)) return
-
-        val roomTitle = data["room_title"].orEmpty().ifBlank {
-            message.notification?.title.orEmpty()
+        if (activeRoomTracker.shouldSuppressTray(roomId, appForegroundTracker.isForeground)) {
+            pushNotificationHelper.playInAppAlert()
+            return
         }
+
         val senderName = data["sender_name"].orEmpty()
+        val roomTitle = data["room_title"].orEmpty().ifBlank {
+            message.notification?.title.orEmpty().ifBlank {
+                senderName.ifBlank { "k-chat" }
+            }
+        }
         val body = data["body"]
             ?: message.notification?.body
             ?: "Tin nhắn mới"
@@ -72,7 +105,7 @@ class KChatFirebaseMessagingService : FirebaseMessagingService() {
                     body = body,
                     messageId = data["message_id"],
                     createdAtMillis = data["created_at"]?.toLongOrNull(),
-                    messageType = data["message_type"],
+                    messageType = data["msg_type"] ?: data["message_type"],
                 )
             }
         }

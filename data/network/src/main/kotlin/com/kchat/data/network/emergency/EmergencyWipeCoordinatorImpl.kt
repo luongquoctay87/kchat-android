@@ -14,16 +14,13 @@ class EmergencyWipeCoordinatorImpl @Inject constructor(
     private val emergencyWipeStore: EmergencyWipeStore,
 ) : EmergencyWipeCoordinator {
     override suspend fun execute() {
-        // Block GET rooms/messages/contacts before clearing so wiped history cannot refill.
-        // New inbound WS/FCM still flows and can recreate a room stub.
-        emergencyWipeStore.activate()
         chatRepository.emergencyWipeAllMessages()
-        contactsRepository.clearForEmergencyWipe()
-        emergencyWipeStore.allowRealtime()
+        emergencyWipeStore.reset()
+        runCatching { chatRepository.refreshRooms() }
+        runCatching { contactsRepository.refreshContacts() }
     }
 
     override suspend fun clearAfterReengage() {
-        if (!emergencyWipeStore.isRealtimeMuted()) return
-        emergencyWipeStore.allowRealtime()
+        emergencyWipeStore.reset()
     }
 }

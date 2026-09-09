@@ -68,6 +68,7 @@ class DataStorePinLockStore @Inject constructor(
             return PinVerifyResult.Unlocked
         }
         if (matchesEmergency(pin)) {
+            _isUnlocked.value = true
             return PinVerifyResult.EmergencyWipeMessages
         }
         return PinVerifyResult.Wrong

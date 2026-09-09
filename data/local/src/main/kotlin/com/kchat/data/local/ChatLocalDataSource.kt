@@ -3,6 +3,7 @@ package com.kchat.data.local
 import com.kchat.core.model.ChatMessage
 import com.kchat.core.model.MessageStorageOptions
 import com.kchat.core.model.RoomSummary
+import com.kchat.core.model.RoomTitles
 import com.kchat.data.local.EntityMappers.toEntity
 import com.kchat.data.local.EntityMappers.toModel
 import com.kchat.data.local.dao.MessageDao
@@ -34,7 +35,9 @@ class ChatLocalDataSource @Inject constructor(
         val now = System.currentTimeMillis()
         roomDao.upsertAll(
             rooms.mapIndexed { index, room ->
-                room.toEntity(updatedAt = now - index)
+                val existing = roomDao.getById(room.id)
+                val title = RoomTitles.resolve(room.title, existing?.title)
+                room.copy(title = title).toEntity(updatedAt = now - index)
             },
         )
     }
@@ -49,17 +52,24 @@ class ChatLocalDataSource @Inject constructor(
     }
 
     suspend fun ensureRoomStub(roomId: String, title: String) {
-        if (roomDao.getById(roomId) != null) return
-        roomDao.upsertAll(
-            listOf(
-                RoomSummary(
-                    id = roomId,
-                    title = title.ifBlank { "Chat" },
-                    preview = "",
-                    time = "",
-                ).toEntity(),
-            ),
-        )
+        val resolved = RoomTitles.resolve(title)
+        val existing = roomDao.getById(roomId)
+        if (existing == null) {
+            roomDao.upsertAll(
+                listOf(
+                    RoomSummary(
+                        id = roomId,
+                        title = resolved,
+                        preview = "",
+                        time = "",
+                    ).toEntity(),
+                ),
+            )
+            return
+        }
+        if (RoomTitles.isPlaceholder(existing.title) && !RoomTitles.isPlaceholder(resolved)) {
+            roomDao.upsertAll(listOf(existing.copy(title = resolved)))
+        }
     }
 
     suspend fun cacheMessages(roomId: String, messages: List<ChatMessage>) {
@@ -116,8 +126,9 @@ class ChatLocalDataSource @Inject constructor(
             existingMsg.mediaUrl != message.mediaUrl
         appendMessage(roomId, message, preserveReactedByMe = preserveReactedByMe)
         if (!isNew && !contentChanged) return
+        val inferredTitle = message.senderName?.takeIf { !message.isMine }
         if (roomDao.getById(roomId) == null) {
-            ensureRoomStub(roomId, "")
+            ensureRoomStub(roomId, inferredTitle.orEmpty())
         }
         val room = roomDao.getById(roomId) ?: return
         val preview = when {
@@ -133,9 +144,11 @@ class ChatLocalDataSource @Inject constructor(
             isNew && !message.isMine && incrementUnread -> room.unreadCount + 1
             else -> room.unreadCount
         }
+        val nextTitle = RoomTitles.resolve(inferredTitle, room.title)
         roomDao.upsertAll(
             listOf(
                 room.copy(
+                    title = nextTitle,
                     preview = preview,
                     time = message.time.ifBlank { room.time },
                     unreadCount = nextUnread,

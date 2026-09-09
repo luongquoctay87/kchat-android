@@ -8,11 +8,14 @@ import androidx.navigation.toRoute
 import com.kchat.core.model.CallRealtimeEvent
 import com.kchat.core.model.RtcIceServer
 import com.kchat.core.navigation.KChatRoute
+import com.kchat.core.ui.call.CallRinger
 import com.kchat.core.ui.call.WebRtcSession
 import com.kchat.core.ui.screens.CallPhase
 import com.kchat.core.ui.screens.CallType
+import com.kchat.data.repository.AccessTokenHolder
 import com.kchat.data.repository.CallRepository
 import com.kchat.data.repository.CallSignalBus
+import com.kchat.data.repository.ChatRepository
 import com.kchat.data.repository.RealtimeCoordinator
 import com.kchat.data.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -21,6 +24,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,8 +41,10 @@ class CallViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val callRepository: CallRepository,
     private val callSignalBus: CallSignalBus,
+    private val chatRepository: ChatRepository,
     private val realtimeCoordinator: RealtimeCoordinator,
     private val settingsRepository: SettingsRepository,
+    private val accessTokenHolder: AccessTokenHolder,
     @ApplicationContext private val appContext: Context,
 ) : ViewModel() {
     private val route = savedStateHandle.toRoute<KChatRoute.Call>()
@@ -91,39 +97,49 @@ class CallViewModel @Inject constructor(
     private var eventsJob: Job? = null
     private var durationJob: Job? = null
     private var connectingTimeoutJob: Job? = null
-    private var demoFallbackJob: Job? = null
     private var ending = false
     private var cachedSelfId: String? = null
     private var cachedIceServers: List<RtcIceServer> = emptyList()
     private var iceServersJob: Job? = null
     private val webRtcMutex = Mutex()
+    private val callRinger = CallRinger(appContext)
 
     init {
-        callSignalBus.markActive(callId.ifBlank { null })
+        val initialId = callId.ifBlank { null }
+        callSignalBus.markActive(initialId)
+        cachedSelfId = accessTokenHolder.userId
         viewModelScope.launch {
-            cachedSelfId = settingsRepository.profile.firstOrNull()?.id
+            runCatching { chatRepository.ensureLocalRoom(roomId, contactName) }
+        }
+        viewModelScope.launch {
+            if (cachedSelfId == null) {
+                cachedSelfId = settingsRepository.profile.firstOrNull()?.id
+            }
         }
         iceServersJob = viewModelScope.launch {
             cachedIceServers = callRepository.getIceServers().getOrDefault(emptyList())
         }
         if (!isOutgoing && callId.isNotBlank()) {
+            callSignalBus.clearIncoming()
             collectSignals()
+        }
+        if (!isOutgoing && _phase.value == CallPhase.IncomingRinging) {
+            callRinger.startIncomingRinging()
         }
     }
 
     fun onMediaReady() {
         if (mediaReady) return
         mediaReady = true
-        if (isVideo) {
-            // Warm camera + peer connection while ringing so preview works as soon as Active.
-            viewModelScope.launch { ensureWebRtc() }
-        }
+        // Warm WebRTC immediately in background for both voice & video while ringing
+        viewModelScope.launch { ensureWebRtc() }
         if (isOutgoing) {
             startOutgoing()
         }
     }
 
     fun onMediaDenied() {
+        callRinger.stop()
         _error.value = "Cần quyền micro" + if (isVideo) " và camera" else ""
         _phase.value = CallPhase.Ended
         _statusText.value = "Thiếu quyền"
@@ -135,6 +151,7 @@ class CallViewModel @Inject constructor(
 
     fun accept() {
         if (isOutgoing || _phase.value != CallPhase.IncomingRinging || accepting) return
+        callRinger.stop()
         accepting = true
         localAcceptRequested = true
         viewModelScope.launch {
@@ -144,27 +161,30 @@ class CallViewModel @Inject constructor(
                 _error.value = "Thiếu mã cuộc gọi"
                 return@launch
             }
-            // Warm WebRTC before accept so early ICE offer from caller is queued, not dropped.
-            if (!ensureWebRtc()) {
+            // Send accept HTTP request and warm WebRTC concurrently to prevent backend ring timeout
+            val rtcJob = async { ensureWebRtc() }
+            val acceptResult = callRepository.accept(callId)
+            val rtcReady = rtcJob.await()
+            if (acceptResult.isFailure) {
                 accepting = false
                 localAcceptRequested = false
+                _error.value = acceptResult.exceptionOrNull()?.message ?: "Không trả lời được"
                 return@launch
             }
-            callRepository.accept(callId)
-                .onSuccess {
-                    enterConnecting()
-                    webRtc?.startAsCallee()
-                    accepting = false
-                }
-                .onFailure { e ->
-                    accepting = false
-                    localAcceptRequested = false
-                    _error.value = e.message ?: "Không trả lời được"
-                }
+            if (!rtcReady) {
+                accepting = false
+                localAcceptRequested = false
+                _error.value = "Không khởi tạo được media"
+                return@launch
+            }
+            enterConnecting()
+            webRtc?.startAsCallee()
+            accepting = false
         }
     }
 
     fun decline() {
+        callRinger.stop()
         viewModelScope.launch {
             ending = true
             if (callId.isNotBlank()) {
@@ -175,6 +195,7 @@ class CallViewModel @Inject constructor(
     }
 
     fun end() {
+        callRinger.stop()
         viewModelScope.launch {
             ending = true
             if (callId.isNotBlank() && _phase.value != CallPhase.Ended) {
@@ -218,8 +239,10 @@ class CallViewModel @Inject constructor(
     private fun startOutgoing() {
         if (started) return
         started = true
+        callRinger.startOutgoingRinging()
         viewModelScope.launch {
             val type = if (isVideo) "video" else "voice"
+            val rtcJob = async { ensureWebRtc() }
             callRepository.initiate(roomId, type)
                 .onSuccess { info ->
                     callId = info.id
@@ -227,8 +250,11 @@ class CallViewModel @Inject constructor(
                     _phase.value = CallPhase.OutgoingRinging
                     _statusText.value = "Đang gọi..."
                     collectSignals()
+                    rtcJob.await()
                 }
                 .onFailure { e ->
+                    callRinger.stop()
+                    rtcJob.cancel()
                     _error.value = e.message ?: "Không gọi được"
                     _phase.value = CallPhase.Ended
                     _statusText.value = "Cuộc gọi thất bại"
@@ -250,6 +276,7 @@ class CallViewModel @Inject constructor(
     private fun handleSignal(event: CallRealtimeEvent) {
         when (event) {
             is CallRealtimeEvent.Accepted -> {
+                callRinger.stop()
                 if (!isOutgoing) {
                     if (localAcceptRequested || accepting ||
                         _phase.value == CallPhase.Connecting ||
@@ -271,22 +298,14 @@ class CallViewModel @Inject constructor(
                     }
                     return
                 }
-                demoFallbackJob?.cancel()
                 enterConnecting()
                 viewModelScope.launch {
                     if (!ensureWebRtc()) return@launch
                     webRtc?.startAsCaller()
                 }
-                if (callRepository.usesSimulatedPeer) {
-                    demoFallbackJob = viewModelScope.launch {
-                        delay(1_200)
-                        if (_phase.value == CallPhase.Connecting) {
-                            enterActive(skipWebRtc = true)
-                        }
-                    }
-                }
             }
             is CallRealtimeEvent.Rejected, is CallRealtimeEvent.Ended -> {
+                callRinger.stop()
                 if (ending) return
                 ending = true
                 disposeWebRtc()
@@ -334,11 +353,13 @@ class CallViewModel @Inject constructor(
     }
 
     private fun isSelf(userId: String): Boolean {
-        val self = cachedSelfId ?: return false
+        val self = cachedSelfId ?: accessTokenHolder.userId
+        if (self.isNullOrBlank()) return false
         return userId.equals(self, ignoreCase = true)
     }
 
     private fun enterConnecting() {
+        callRinger.stop()
         _phase.value = CallPhase.Connecting
         _statusText.value = "Đang kết nối..."
         connectingTimeoutJob?.cancel()
@@ -351,12 +372,9 @@ class CallViewModel @Inject constructor(
         }
     }
 
-    private fun enterActive(skipWebRtc: Boolean) {
+    private fun enterActive() {
+        callRinger.stop()
         connectingTimeoutJob?.cancel()
-        demoFallbackJob?.cancel()
-        if (skipWebRtc) {
-            disposeWebRtc()
-        }
         _phase.value = CallPhase.Active
         _statusText.value = "Đang trò chuyện"
         startDurationTimer()
@@ -403,7 +421,7 @@ class CallViewModel @Inject constructor(
                                 if (_phase.value == CallPhase.Connecting ||
                                     _phase.value == CallPhase.OutgoingRinging
                                 ) {
-                                    enterActive(skipWebRtc = false)
+                                    enterActive()
                                 }
                             }
                             WebRtcSession.ConnectionState.Failed -> {
@@ -450,9 +468,9 @@ class CallViewModel @Inject constructor(
     }
 
     private fun finishAndClose() {
+        callRinger.stop()
         disposeWebRtc()
         durationJob?.cancel()
-        demoFallbackJob?.cancel()
         connectingTimeoutJob?.cancel()
         callSignalBus.clearActive(callId.ifBlank { null })
         callSignalBus.clearIncoming()
@@ -467,6 +485,7 @@ class CallViewModel @Inject constructor(
     }
 
     override fun onCleared() {
+        callRinger.stop()
         val id = callId
         // Only auto-hangup when media session was up; OutgoingRinging cleanup is explicit (Back/end).
         val shouldHangup = !ending &&
@@ -475,7 +494,6 @@ class CallViewModel @Inject constructor(
         ending = true
         disposeWebRtc()
         durationJob?.cancel()
-        demoFallbackJob?.cancel()
         connectingTimeoutJob?.cancel()
         eventsJob?.cancel()
         callSignalBus.clearActive(id.ifBlank { null })

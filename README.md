@@ -74,7 +74,6 @@ flowchart TB
         REPO["repository<br/>Contracts · SessionCoordinator"]
         NET["network<br/>Retrofit · WS"]
         LOCAL["local<br/>Room"]
-        FAKE["fake<br/>Preview data"]
     end
 
     API["k-chat-api"]
@@ -83,7 +82,6 @@ flowchart TB
     NAV --> UI & REPO
     UI --> DESIGN & MODEL
     REPO --> NET & LOCAL
-    REPO -.-> FAKE
     NET --> API
 ```
 
@@ -97,7 +95,6 @@ flowchart TB
 | `:data:repository` | Repository interfaces · session · realtime |
 | `:data:network` | REST client · WebSocket · mappers |
 | `:data:local` | Room entities · DAO · cache purge |
-| `:data:fake` | Sample / preview data (Compose previews) |
 
 ---
 
