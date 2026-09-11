@@ -5,6 +5,7 @@ import com.kchat.BuildConfig
 import com.kchat.data.network.api.KChatApi
 import com.kchat.data.network.auth.JwtAuthInterceptor
 import com.kchat.data.network.auth.TokenAuthenticator
+import com.kchat.data.network.auth.TokenRefreshCoordinator
 import com.kchat.data.network.auth.UnauthorizedSessionInterceptor
 import com.kchat.data.network.ws.KChatWebSocketClient
 import com.kchat.data.repository.AccessTokenHolder
@@ -31,15 +32,8 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideTokenAuthenticator(
-        tokenStore: TokenStore,
-        accessTokenHolder: AccessTokenHolder,
-        deviceTokenStore: DeviceTokenStore,
-    ): TokenAuthenticator = TokenAuthenticator(
-        tokenStore = tokenStore,
-        accessTokenHolder = accessTokenHolder,
-        deviceTokenStore = deviceTokenStore,
-        apiBaseUrl = BuildConfig.API_BASE_URL,
-    )
+        tokenRefreshCoordinator: TokenRefreshCoordinator,
+    ): TokenAuthenticator = TokenAuthenticator(tokenRefreshCoordinator)
 
     @Provides
     @Singleton

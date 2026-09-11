@@ -18,9 +18,9 @@ import com.kchat.data.local.ChatLocalDataSource
 import com.kchat.data.network.api.KChatApi
 import com.kchat.data.network.apiMessage
 import com.kchat.data.network.apiResult
-import com.kchat.data.network.auth.JwtPayload
+import com.kchat.data.network.auth.TokenRefreshCoordinator
+import com.kchat.data.network.auth.TokenRefreshResult
 import com.kchat.data.network.dto.AddMembersRequest
-import com.kchat.data.network.dto.AuthResponse
 import com.kchat.data.network.dto.CallEventPayload
 import com.kchat.data.network.dto.CreateGroupRequest
 import com.kchat.data.network.dto.DeviceSessionRevokedPayload
@@ -37,7 +37,6 @@ import com.kchat.data.network.dto.MessageNewPayload
 import com.kchat.data.network.dto.MessagesReadPayload
 import com.kchat.data.network.dto.PinMessageRequest
 import com.kchat.data.network.dto.ReactMessageRequest
-import com.kchat.data.network.dto.RefreshRequest
 import com.kchat.data.network.dto.RegisterDeviceRequest
 import com.kchat.data.network.util.currentUtcOffsetMinutes
 import com.kchat.data.network.dto.RegisterRequest
@@ -85,12 +84,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
-import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -577,8 +571,8 @@ class NetworkRealtimeCoordinator @Inject constructor(
     private val webSocketClient: KChatWebSocketClient,
     private val api: KChatApi,
     private val accessTokenHolder: AccessTokenHolder,
-    private val tokenStore: TokenStore,
     private val deviceTokenStore: DeviceTokenStore,
+    private val tokenRefreshCoordinator: TokenRefreshCoordinator,
     private val localDataSource: ChatLocalDataSource,
     private val chatRepository: ChatRepository,
     private val contactsRepository: ContactsRepository,
@@ -629,7 +623,7 @@ class NetworkRealtimeCoordinator @Inject constructor(
             var backoffMs = WS_RECONNECT_MIN_MS
             while (isActive) {
                 runCatching {
-                    ensureValidAccessToken()
+                    if (!ensureValidAccessToken()) return@runCatching
                     webSocketClient.connect().collect { event ->
                         when (event) {
                             is WsEvent.Message -> handleMessage(event.raw)
@@ -641,7 +635,7 @@ class NetworkRealtimeCoordinator @Inject constructor(
                                 if (event.message.contains("401") ||
                                     event.message.contains("Unauthorized", ignoreCase = true)
                                 ) {
-                                    refreshTokenInternal()
+                                    tokenRefreshCoordinator.refresh()
                                 }
                             }
                             else -> Unit
@@ -656,46 +650,13 @@ class NetworkRealtimeCoordinator @Inject constructor(
     }
 
     private suspend fun ensureValidAccessToken(): Boolean {
-        var current = accessTokenHolder.accessToken
-        if (current.isNullOrBlank()) {
-            current = tokenStore.getAccessToken()
+        return when (tokenRefreshCoordinator.refresh()) {
+            is TokenRefreshResult.Success -> true
+            is TokenRefreshResult.TransientFailure,
+            is TokenRefreshResult.SessionInvalid,
+            is TokenRefreshResult.NoTokens,
+            -> false
         }
-        if (!current.isNullOrBlank() && !JwtPayload.isExpiredOrExpiring(current)) {
-            return true
-        }
-        return refreshTokenInternal()
-    }
-
-    private suspend fun refreshTokenInternal(): Boolean {
-        val tokens = tokenStore.currentTokens() ?: return false
-        val refreshUrl = apiBaseUrl.trimEnd('/') + "/auth/refresh"
-        val bodyJson = json.encodeToString(RefreshRequest(tokens.refreshToken))
-        val refreshRequestBuilder = Request.Builder()
-            .url(refreshUrl)
-            .post(bodyJson.toRequestBody("application/json".toMediaType()))
-        val deviceToken = runCatching { deviceTokenStore.getOrCreate() }.getOrNull()
-        if (!deviceToken.isNullOrBlank()) {
-            refreshRequestBuilder.header("X-Device-Token", deviceToken)
-        }
-        val client = OkHttpClient.Builder()
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(15, TimeUnit.SECONDS)
-            .build()
-        return runCatching {
-            client.newCall(refreshRequestBuilder.build()).execute().use { res ->
-                if (!res.isSuccessful) {
-                    if (res.code == 401 || res.code == 403) {
-                        tokenStore.clear()
-                    }
-                    false
-                } else {
-                    val body = res.body?.string().orEmpty()
-                    val auth = json.decodeFromString<AuthResponse>(body)
-                    tokenStore.saveTokens(AuthTokens(auth.accessToken, auth.refreshToken))
-                    true
-                }
-            }
-        }.getOrDefault(false)
     }
 
     private suspend fun onSocketConnected() {
@@ -971,7 +932,7 @@ class NetworkRealtimeCoordinator @Inject constructor(
         val localToken = runCatching { deviceTokenStore.getOrCreate() }.getOrNull() ?: return
         if (payload.deviceToken != localToken) return
         webSocketClient.disconnect()
-        tokenStore.clear()
+        tokenRefreshCoordinator.clearSession()
     }
 
     private suspend fun handleCallEvent(type: String, payloadNode: kotlinx.serialization.json.JsonObject?) {

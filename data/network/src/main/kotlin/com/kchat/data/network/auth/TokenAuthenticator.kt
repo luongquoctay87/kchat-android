@@ -1,99 +1,42 @@
 package com.kchat.data.network.auth
 
-import com.kchat.core.model.AuthTokens
-import com.kchat.data.network.dto.AuthResponse
-import com.kchat.data.network.dto.RefreshRequest
-import com.kchat.data.repository.AccessTokenHolder
-import com.kchat.data.repository.DeviceTokenStore
-import com.kchat.data.repository.TokenStore
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import okhttp3.Authenticator
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import okhttp3.Route
-import java.util.concurrent.TimeUnit
 
 /**
- * On HTTP 401, refreshes access token once and retries the original request.
- * Uses a plain OkHttpClient (no authenticator) to avoid refresh loops.
+ * On HTTP 401, refreshes access token once via [TokenRefreshCoordinator] and retries.
  */
 class TokenAuthenticator(
-    private val tokenStore: TokenStore,
-    private val accessTokenHolder: AccessTokenHolder,
-    private val deviceTokenStore: DeviceTokenStore,
-    private val apiBaseUrl: String,
+    private val tokenRefreshCoordinator: TokenRefreshCoordinator,
 ) : Authenticator {
-    private val json = Json { ignoreUnknownKeys = true; isLenient = true }
-    private val refreshClient = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(15, TimeUnit.SECONDS)
-        .build()
 
     override fun authenticate(route: Route?, response: Response): Request? {
         if (responseCount(response) >= 2) {
-            runBlocking { tokenStore.clear() }
+            runBlocking { tokenRefreshCoordinator.clearSession() }
             return null
         }
         if (response.code == 401 && isDeviceSessionRevoked(response)) {
-            runBlocking { tokenStore.clear() }
+            runBlocking { tokenRefreshCoordinator.clearSession() }
             return null
         }
         val path = response.request.url.encodedPath
         if (path.startsWith("/auth/")) return null
 
-        synchronized(this) {
-            val currentAccess = accessTokenHolder.accessToken
-            val requestToken = response.request.header("Authorization")
-                ?.removePrefix("Bearer ")
-                ?.trim()
-            // Another thread may have already refreshed
-            if (!currentAccess.isNullOrBlank() &&
-                !requestToken.isNullOrBlank() &&
-                currentAccess != requestToken
-            ) {
-                return response.request.newBuilder()
-                    .header("Authorization", "Bearer $currentAccess")
-                    .build()
-            }
+        val requestToken = response.request.header("Authorization")
+            ?.removePrefix("Bearer ")
+            ?.trim()
 
-            val tokens = runBlocking { tokenStore.currentTokens() } ?: return null
-            val refreshUrl = apiBaseUrl.trimEnd('/') + "/auth/refresh"
-            val bodyJson = json.encodeToString(RefreshRequest(tokens.refreshToken))
-
-            val refreshRequestBuilder = Request.Builder()
-                .url(refreshUrl)
-                .post(bodyJson.toRequestBody("application/json".toMediaType()))
-            val deviceToken = runBlocking { runCatching { deviceTokenStore.getOrCreate() }.getOrNull() }
-            if (!deviceToken.isNullOrBlank()) {
-                refreshRequestBuilder.header("X-Device-Token", deviceToken)
-            }
-            val refreshRequest = refreshRequestBuilder.build()
-
-            return refreshClient.newCall(refreshRequest).execute().use { refreshResponse ->
-                if (!refreshResponse.isSuccessful) {
-                    // Only drop session when refresh token is rejected, not on network/5xx
-                    if (refreshResponse.code == 401 || refreshResponse.code == 403) {
-                        runBlocking { tokenStore.clear() }
-                    }
-                    return null
-                }
-                val responseBody = refreshResponse.body?.string().orEmpty()
-                val auth = runCatching { json.decodeFromString<AuthResponse>(responseBody) }.getOrNull()
-                    ?: return null
-
-                runBlocking {
-                    tokenStore.saveTokens(AuthTokens(auth.accessToken, auth.refreshToken))
-                }
-
-                response.request.newBuilder()
-                    .header("Authorization", "Bearer ${auth.accessToken}")
-                    .build()
-            }
+        return when (val result = runBlocking { tokenRefreshCoordinator.refresh(requestToken) }) {
+            is TokenRefreshResult.Success -> response.request.newBuilder()
+                .header("Authorization", "Bearer ${result.accessToken}")
+                .build()
+            is TokenRefreshResult.SessionInvalid,
+            is TokenRefreshResult.TransientFailure,
+            is TokenRefreshResult.NoTokens,
+            -> null
         }
     }
 
