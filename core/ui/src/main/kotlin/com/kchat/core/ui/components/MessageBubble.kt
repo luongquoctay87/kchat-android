@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -40,6 +41,7 @@ import coil.request.ImageRequest
 import com.kchat.core.design.KChatColors
 import com.kchat.core.design.KChatDimens
 import com.kchat.core.model.ChatMessage
+import com.kchat.core.model.FileDownloadStatus
 import com.kchat.core.model.MessageType
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -50,6 +52,7 @@ fun MessageBubble(
     highlighted: Boolean = false,
     onImageClick: (() -> Unit)? = null,
     onFileClick: (() -> Unit)? = null,
+    fileDownloadStatus: FileDownloadStatus? = null,
     onLongClick: (() -> Unit)? = null,
     onReadReceiptClick: (() -> Unit)? = null,
     onReactionClick: ((String) -> Unit)? = null,
@@ -134,6 +137,7 @@ fun MessageBubble(
                         message = message,
                         onClick = onFileClick,
                         onLongClick = onLongClick,
+                        downloadStatus = fileDownloadStatus,
                     )
                     MessageType.Bot, MessageType.CallEvent -> Unit
                 }
@@ -299,18 +303,65 @@ private fun FileBubble(
     message: ChatMessage,
     onClick: (() -> Unit)?,
     onLongClick: (() -> Unit)?,
+    downloadStatus: FileDownloadStatus?,
 ) {
+    val downloading = downloadStatus as? FileDownloadStatus.Downloading
+    val saved = downloadStatus as? FileDownloadStatus.Saved
     BubbleContainer(
         isMine = message.isMine,
-        onClick = onClick,
+        onClick = if (downloading != null) null else onClick,
         onLongClick = onLongClick,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Column(modifier = Modifier.weight(1f, fill = false)) {
                 Text(message.fileName.orEmpty(), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-                Text(message.fileSize.orEmpty(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    when {
+                        downloading != null -> {
+                            val pct = downloading.progress?.let { (it * 100).toInt() }
+                            if (pct != null) "Đang tải $pct%" else "Đang tải..."
+                        }
+                        saved != null -> listOfNotNull(
+                            "Đã lưu",
+                            message.fileSize?.takeIf { it.isNotBlank() },
+                        ).joinToString(" · ")
+                        else -> message.fileSize.orEmpty()
+                    },
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
-            Icon(Icons.Default.Download, contentDescription = "Tải xuống", tint = MaterialTheme.colorScheme.primary)
+            when {
+                downloading != null -> {
+                    val progress = downloading.progress
+                    if (progress != null) {
+                        CircularProgressIndicator(
+                            progress = { progress },
+                            modifier = Modifier.size(22.dp),
+                            strokeWidth = 2.dp,
+                        )
+                    } else {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(22.dp),
+                            strokeWidth = 2.dp,
+                        )
+                    }
+                }
+                saved != null -> {
+                    Icon(
+                        Icons.Default.FolderOpen,
+                        contentDescription = "Mở file",
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                else -> {
+                    Icon(
+                        Icons.Default.Download,
+                        contentDescription = "Tải xuống",
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
         }
     }
 }

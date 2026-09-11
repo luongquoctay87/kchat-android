@@ -6,7 +6,9 @@ import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
 import com.kchat.core.model.ChatMessage
 import com.kchat.core.model.ContactSummary
+import com.kchat.core.model.FileDownloadStatus
 import com.kchat.core.model.GroupMember
+import com.kchat.core.model.MediaDownloadResult
 import com.kchat.core.model.MentionUser
 import com.kchat.core.model.PinnedMessage
 import com.kchat.core.model.PinMessageRules
@@ -18,14 +20,18 @@ import com.kchat.data.repository.AccessTokenHolder
 import com.kchat.data.repository.ActiveRoomTracker
 import com.kchat.data.repository.ChatRepository
 import com.kchat.data.repository.ContactsRepository
+import com.kchat.data.repository.DownloadedMediaStore
 import com.kchat.data.repository.EmergencyWipeCoordinator
 import com.kchat.data.repository.RealtimeCoordinator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
@@ -39,6 +45,7 @@ class ChatRoomViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val chatRepository: ChatRepository,
     private val contactsRepository: ContactsRepository,
+    private val downloadedMediaStore: DownloadedMediaStore,
     private val emergencyWipeCoordinator: EmergencyWipeCoordinator,
     private val activeRoomTracker: ActiveRoomTracker,
     private val realtimeCoordinator: RealtimeCoordinator,
@@ -87,6 +94,24 @@ class ChatRoomViewModel @Inject constructor(
 
     private val _infoMessage = MutableStateFlow<String?>(null)
     val infoMessage: StateFlow<String?> = _infoMessage.asStateFlow()
+
+    private val _downloadProgress = MutableStateFlow<Map<String, Float?>>(emptyMap())
+    val fileDownloadStatuses: StateFlow<Map<String, FileDownloadStatus>> = combine(
+        downloadedMediaStore.observe(),
+        _downloadProgress,
+    ) { saved, progress ->
+        buildMap {
+            saved.forEach { (url, result) ->
+                put(url, FileDownloadStatus.Saved(result.contentUri, result.fileName))
+            }
+            progress.forEach { (url, value) ->
+                put(url, FileDownloadStatus.Downloading(value))
+            }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    private val _openDownloadedFile = MutableSharedFlow<MediaDownloadResult>(extraBufferCapacity = 1)
+    val openDownloadedFile: SharedFlow<MediaDownloadResult> = _openDownloadedFile.asSharedFlow()
 
     private var typingHeartbeatJob: Job? = null
     private var isComposing = false
@@ -337,8 +362,39 @@ class ChatRoomViewModel @Inject constructor(
             }
     }
 
-    suspend fun downloadMedia(mediaUrl: String, fileName: String) =
-        chatRepository.downloadMedia(mediaUrl, fileName)
+    fun openOrDownloadFile(mediaUrl: String, fileName: String) {
+        val url = mediaUrl.trim()
+        if (url.isEmpty()) return
+        viewModelScope.launch {
+            val existing = downloadedMediaStore.get(url)
+            if (existing != null && downloadedMediaStore.isAccessible(existing.contentUri)) {
+                _openDownloadedFile.emit(existing)
+                return@launch
+            }
+            if (existing != null) {
+                downloadedMediaStore.remove(url)
+            }
+            if (_downloadProgress.value.containsKey(url)) return@launch
+
+            _downloadProgress.update { it + (url to null) }
+            chatRepository.downloadMedia(url, fileName) { bytesRead, contentLength ->
+                val progress = if (contentLength > 0L) {
+                    (bytesRead.toFloat() / contentLength.toFloat()).coerceIn(0f, 1f)
+                } else {
+                    null
+                }
+                _downloadProgress.update { it + (url to progress) }
+            }.onSuccess { result ->
+                downloadedMediaStore.put(url, result)
+                _downloadProgress.update { it - url }
+                _infoMessage.value = "Đã lưu vào Downloads"
+                _openDownloadedFile.emit(result)
+            }.onFailure { error ->
+                _downloadProgress.update { it - url }
+                _actionError.value = error.message ?: "Tải file thất bại"
+            }
+        }
+    }
 
     fun mentionUsers(query: String): List<MentionUser> {
         val q = query.trim()

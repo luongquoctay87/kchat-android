@@ -11,6 +11,12 @@ interface AuthRepository {
 
     suspend fun verifyRegistrationOtp(email: String, otp: String): Result<String>
 
+    /** True when username is free to register. */
+    suspend fun checkUsernameAvailable(username: String): Result<Boolean>
+
+    /** True when email is free to register. */
+    suspend fun checkEmailAvailable(email: String): Result<Boolean>
+
     suspend fun register(
         registrationToken: String,
         displayName: String,

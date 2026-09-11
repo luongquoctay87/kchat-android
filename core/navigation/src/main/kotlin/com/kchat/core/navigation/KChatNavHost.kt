@@ -1,6 +1,8 @@
 package com.kchat.core.navigation
 
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,11 +27,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.content.FileProvider
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
 import android.widget.Toast
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -38,6 +44,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
 import com.kchat.core.design.KChatAppearance
+import com.kchat.core.model.MediaDownloadResult
 import com.kchat.core.ui.KChatScaffold
 import com.kchat.core.ui.KChatTab
 import com.kchat.core.ui.components.SheetCancelRow
@@ -248,10 +255,13 @@ fun KChatNavHost(
                 otp = state.otp,
                 isVerifyingOtp = state.isVerifyingOtp,
                 formError = state.formError,
+                displayNameError = state.displayNameError,
+                emailError = state.emailError,
                 usernameError = state.usernameError,
                 passwordError = state.passwordError,
                 confirmError = state.confirmError,
                 otpError = state.otpError,
+                canSubmit = state.canSubmitForm,
                 onDisplayNameChange = viewModel::onDisplayNameChange,
                 onUsernameChange = viewModel::onUsernameChange,
                 onEmailChange = viewModel::onEmailChange,
@@ -366,11 +376,49 @@ fun KChatNavHost(
             val canAddPeerToContacts by viewModel.canAddPeerToContacts.collectAsStateWithLifecycle()
             val restoreDraft by viewModel.restoreDraft.collectAsStateWithLifecycle()
             val restoreReply by viewModel.restoreReply.collectAsStateWithLifecycle()
+            val fileDownloadStatuses by viewModel.fileDownloadStatuses.collectAsStateWithLifecycle()
             val scrollToMessageId by entry.savedStateHandle
                 .getStateFlow<String?>("scrollToMessageId", null)
                 .collectAsStateWithLifecycle()
             val context = LocalContext.current
-            val scope = rememberCoroutineScope()
+            var pendingDownload by remember { mutableStateOf<Pair<String, String>?>(null) }
+            val writePermissionLauncher = rememberLauncherForActivityResult(
+                ActivityResultContracts.RequestPermission(),
+            ) { granted ->
+                val pending = pendingDownload
+                pendingDownload = null
+                if (pending == null) return@rememberLauncherForActivityResult
+                if (granted) {
+                    viewModel.openOrDownloadFile(pending.first, pending.second)
+                } else {
+                    Toast.makeText(context, "Cần quyền lưu file vào Downloads", Toast.LENGTH_SHORT).show()
+                }
+            }
+            fun openDownloadedResult(result: MediaDownloadResult) {
+                val uri = Uri.parse(result.contentUri)
+                val intent = Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(uri, result.mimeType.ifBlank { "*/*" })
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                runCatching {
+                    context.startActivity(Intent.createChooser(intent, result.fileName))
+                }.onFailure {
+                    Toast.makeText(context, "Không mở được file", Toast.LENGTH_SHORT).show()
+                }
+            }
+            fun requestOpenOrDownload(url: String, fileName: String) {
+                val needsWritePermission = Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
+                    ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                    ) != PackageManager.PERMISSION_GRANTED
+                if (needsWritePermission) {
+                    pendingDownload = url to fileName
+                    writePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                } else {
+                    viewModel.openOrDownloadFile(url, fileName)
+                }
+            }
             LaunchedEffect(actionError) {
                 actionError?.let { message ->
                     Toast.makeText(context, message, Toast.LENGTH_LONG).show()
@@ -381,6 +429,11 @@ fun KChatNavHost(
                 infoMessage?.let { message ->
                     Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                     viewModel.clearInfoMessage()
+                }
+            }
+            LaunchedEffect(viewModel) {
+                viewModel.openDownloadedFile.collect { result ->
+                    openDownloadedResult(result)
                 }
             }
             ChatRoomScreen(
@@ -427,36 +480,8 @@ fun KChatNavHost(
                         ),
                     )
                 },
-                onOpenFile = { url, fileName ->
-                    scope.launch {
-                        Toast.makeText(context, "Đang tải file...", Toast.LENGTH_SHORT).show()
-                        viewModel.downloadMedia(url, fileName)
-                            .onSuccess { file ->
-                                val uri = FileProvider.getUriForFile(
-                                    context,
-                                    "${context.packageName}.files",
-                                    file,
-                                )
-                                val ext = fileName.substringAfterLast('.', "").lowercase()
-                                val mime = android.webkit.MimeTypeMap.getSingleton()
-                                    .getMimeTypeFromExtension(ext)
-                                    ?: context.contentResolver.getType(uri)
-                                    ?: "*/*"
-                                val intent = Intent(Intent.ACTION_VIEW).apply {
-                                    setDataAndType(uri, mime)
-                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                }
-                                runCatching {
-                                    context.startActivity(Intent.createChooser(intent, fileName))
-                                }.onFailure {
-                                    Toast.makeText(context, "Không mở được file", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                            .onFailure {
-                                Toast.makeText(context, it.message ?: "Tải file thất bại", Toast.LENGTH_SHORT).show()
-                            }
-                    }
-                },
+                onOpenFile = { url, fileName -> requestOpenOrDownload(url, fileName) },
+                fileDownloadStatuses = fileDownloadStatuses,
                 onOpenSearch = {
                     navController.navigate(KChatRoute.InChatSearch(route.roomId, route.title))
                 },

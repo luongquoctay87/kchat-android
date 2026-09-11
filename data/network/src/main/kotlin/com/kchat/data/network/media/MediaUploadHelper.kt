@@ -11,7 +11,7 @@ import okio.BufferedSink
 import okio.source
 
 internal object MediaUploadHelper {
-    const val MAX_BYTES = 25L * 1024 * 1024
+    const val MAX_BYTES = 100L * 1024 * 1024
     const val AVATAR_MAX_BYTES = 5L * 1024 * 1024
 
     private val AVATAR_MIME = setOf(

@@ -2,6 +2,7 @@ package com.kchat.core.navigation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.kchat.core.model.EmailRules
 import com.kchat.core.model.PasswordRules
 import com.kchat.core.model.RegisterValidation
 import com.kchat.data.repository.AuthRepository
@@ -26,12 +27,22 @@ data class RegisterUiState(
     val otp: String = "",
     val isVerifyingOtp: Boolean = false,
     val formError: String? = null,
+    val displayNameError: String? = null,
+    val emailError: String? = null,
     val usernameError: String? = null,
     val passwordError: String? = null,
     val confirmError: String? = null,
     val otpError: String? = null,
     val isRegistered: Boolean = false,
-)
+) {
+    val canSubmitForm: Boolean
+        get() = RegisterValidation.canSubmit(displayName, email, username, password, confirm) &&
+            displayNameError == null &&
+            emailError == null &&
+            usernameError == null &&
+            passwordError == null &&
+            confirmError == null
+}
 
 @HiltViewModel
 class RegisterViewModel @Inject constructor(
@@ -41,9 +52,17 @@ class RegisterViewModel @Inject constructor(
     val uiState = _uiState.asStateFlow()
 
     private var passwordValidationJob: Job? = null
+    private var usernameAvailabilityJob: Job? = null
+    private var emailAvailabilityJob: Job? = null
 
     fun onDisplayNameChange(value: String) =
-        _uiState.update { it.copy(displayName = value, formError = null) }
+        _uiState.update {
+            it.copy(
+                displayName = value,
+                formError = null,
+                displayNameError = liveDisplayNameError(value),
+            )
+        }
 
     fun onUsernameChange(value: String) {
         val sanitized = RegisterValidation.sanitizeUsernameInput(value)
@@ -52,19 +71,35 @@ class RegisterViewModel @Inject constructor(
                 username = sanitized,
                 usernameEdited = true,
                 formError = null,
-                usernameError = null,
+                usernameError = liveUsernameError(sanitized),
             )
         }
+        scheduleUsernameAvailabilityCheck(sanitized)
     }
 
     fun onEmailChange(value: String) {
+        val sanitized = EmailRules.sanitizeEmailInput(value)
+        var nextUsername = ""
+        var shouldCheckSuggestedUsername = false
         _uiState.update { state ->
-            val suggested = RegisterValidation.suggestUsernameFromEmail(value)
+            val suggested = RegisterValidation.suggestUsernameFromEmail(sanitized)
+            nextUsername = if (state.usernameEdited) state.username else suggested
+            shouldCheckSuggestedUsername = !state.usernameEdited
             state.copy(
-                email = value,
+                email = sanitized,
                 formError = null,
-                username = if (state.usernameEdited) state.username else suggested,
+                emailError = liveEmailError(sanitized),
+                username = nextUsername,
+                usernameError = if (state.usernameEdited) {
+                    state.usernameError
+                } else {
+                    liveUsernameError(nextUsername)
+                },
             )
+        }
+        scheduleEmailAvailabilityCheck(sanitized)
+        if (shouldCheckSuggestedUsername) {
+            scheduleUsernameAvailabilityCheck(nextUsername)
         }
     }
 
@@ -83,7 +118,7 @@ class RegisterViewModel @Inject constructor(
     }
 
     fun onOtpChange(value: String) =
-        _uiState.update { it.copy(otp = value.filter { c -> c.isDigit() }.take(6), otpError = null) }
+        _uiState.update { it.copy(otp = value.filter(Char::isDigit).take(6), otpError = null) }
 
     fun dismissOtpDialog() {
         if (_uiState.value.isVerifyingOtp) return
@@ -92,57 +127,90 @@ class RegisterViewModel @Inject constructor(
         }
     }
 
-    /** Step 1: validate form + send OTP → show dialog. */
+    /** Step 1: validate form + re-check availability + send OTP → show dialog. */
     fun submit() {
         val state = _uiState.value
         if (state.isSendingOtp) return
 
         passwordValidationJob?.cancel()
-        val usernameError = RegisterValidation.validateUsername(state.username)
-        val passwordError = PasswordRules.validate(state.password)
-        val confirmError = when {
-            state.confirm.isEmpty() -> "Vui lòng xác nhận mật khẩu"
-            state.password != state.confirm -> "Mật khẩu xác nhận không khớp"
-            else -> null
-        }
+        usernameAvailabilityJob?.cancel()
+        emailAvailabilityJob?.cancel()
 
-        val formError = RegisterValidation.validate(
+        val fieldErrors = RegisterValidation.validateFields(
             displayName = state.displayName,
             email = state.email,
             username = state.username,
             password = state.password,
             confirm = state.confirm,
         )
-
-        if (formError != null) {
-            val fieldRelated =
-                formError == usernameError ||
-                    formError == passwordError ||
-                    formError == confirmError ||
-                    formError == "Mật khẩu xác nhận không khớp"
+        if (fieldErrors.hasAny) {
             _uiState.update {
                 it.copy(
-                    formError = if (fieldRelated) null else formError,
-                    usernameError = usernameError,
-                    passwordError = passwordError,
-                    confirmError = confirmError,
+                    formError = null,
+                    displayNameError = fieldErrors.displayName,
+                    emailError = fieldErrors.email,
+                    usernameError = fieldErrors.username,
+                    passwordError = fieldErrors.password,
+                    confirmError = fieldErrors.confirm,
                 )
             }
             return
         }
+        if (state.usernameError != null || state.emailError != null) return
 
-        val email = state.email.trim()
+        val parsed = RegisterValidation.parse(state.displayName, state.email, state.username)
         viewModelScope.launch {
             _uiState.update {
                 it.copy(
                     isSendingOtp = true,
                     formError = null,
-                    usernameError = null,
+                    displayNameError = null,
                     passwordError = null,
                     confirmError = null,
                 )
             }
-            authRepository.sendRegistrationOtp(email)
+
+            val usernameAvailable = authRepository.checkUsernameAvailable(parsed.username)
+                .getOrElse { error ->
+                    _uiState.update {
+                        it.copy(
+                            isSendingOtp = false,
+                            formError = error.message ?: "Không kiểm tra được username",
+                        )
+                    }
+                    return@launch
+                }
+            if (!usernameAvailable) {
+                _uiState.update {
+                    it.copy(
+                        isSendingOtp = false,
+                        usernameError = USERNAME_TAKEN_MESSAGE,
+                    )
+                }
+                return@launch
+            }
+
+            val emailAvailable = authRepository.checkEmailAvailable(parsed.email)
+                .getOrElse { error ->
+                    _uiState.update {
+                        it.copy(
+                            isSendingOtp = false,
+                            formError = error.message ?: "Không kiểm tra được email",
+                        )
+                    }
+                    return@launch
+                }
+            if (!emailAvailable) {
+                _uiState.update {
+                    it.copy(
+                        isSendingOtp = false,
+                        emailError = EMAIL_TAKEN_MESSAGE,
+                    )
+                }
+                return@launch
+            }
+
+            authRepository.sendRegistrationOtp(parsed.email)
                 .onSuccess {
                     _uiState.update {
                         it.copy(
@@ -150,14 +218,18 @@ class RegisterViewModel @Inject constructor(
                             showOtpDialog = true,
                             otp = "",
                             otpError = null,
+                            usernameError = null,
+                            emailError = null,
                         )
                     }
                 }
                 .onFailure { e ->
+                    val message = e.message ?: "Không gửi được OTP. Vui lòng thử lại."
                     _uiState.update {
                         it.copy(
                             isSendingOtp = false,
-                            formError = e.message ?: "Không gửi được OTP. Vui lòng thử lại.",
+                            emailError = if (isEmailConflict(message)) message else null,
+                            formError = if (isEmailConflict(message)) null else message,
                         )
                     }
                 }
@@ -189,12 +261,7 @@ class RegisterViewModel @Inject constructor(
                             )
                         }
                     }.onFailure { e ->
-                        _uiState.update {
-                            it.copy(
-                                isVerifyingOtp = false,
-                                otpError = e.message ?: "Đăng ký thất bại. Vui lòng thử lại.",
-                            )
-                        }
+                        applyRegisterFailure(e.message ?: "Đăng ký thất bại. Vui lòng thử lại.")
                     }
                 }
                 .onFailure { e ->
@@ -213,7 +280,7 @@ class RegisterViewModel @Inject constructor(
         if (state.isSendingOtp || state.isVerifyingOtp) return
         viewModelScope.launch {
             _uiState.update { it.copy(isSendingOtp = true, otpError = null) }
-            authRepository.sendRegistrationOtp(state.email.trim())
+            authRepository.sendRegistrationOtp(state.email.trim().lowercase())
                 .onSuccess {
                     _uiState.update {
                         it.copy(isSendingOtp = false, otp = "", otpError = null)
@@ -230,10 +297,90 @@ class RegisterViewModel @Inject constructor(
         }
     }
 
+    private fun scheduleUsernameAvailabilityCheck(username: String) {
+        usernameAvailabilityJob?.cancel()
+        if (RegisterValidation.validateUsername(username) != null) return
+        usernameAvailabilityJob = viewModelScope.launch {
+            delay(DEBOUNCE_MS)
+            if (_uiState.value.username != username) return@launch
+            authRepository.checkUsernameAvailable(username)
+                .onSuccess { available ->
+                    if (_uiState.value.username != username) return@onSuccess
+                    if (!available) {
+                        _uiState.update { it.copy(usernameError = USERNAME_TAKEN_MESSAGE) }
+                    }
+                }
+        }
+    }
+
+    private fun scheduleEmailAvailabilityCheck(email: String) {
+        emailAvailabilityJob?.cancel()
+        if (EmailRules.validateForRegistration(email) != null) return
+        emailAvailabilityJob = viewModelScope.launch {
+            delay(DEBOUNCE_MS)
+            if (_uiState.value.email != email) return@launch
+            authRepository.checkEmailAvailable(email)
+                .onSuccess { available ->
+                    if (_uiState.value.email != email) return@onSuccess
+                    if (!available) {
+                        _uiState.update { it.copy(emailError = EMAIL_TAKEN_MESSAGE) }
+                    }
+                }
+        }
+    }
+
+    private fun applyRegisterFailure(message: String) {
+        when {
+            isUsernameConflict(message) -> {
+                _uiState.update {
+                    it.copy(
+                        isVerifyingOtp = false,
+                        showOtpDialog = false,
+                        otp = "",
+                        otpError = null,
+                        usernameError = message,
+                        formError = null,
+                    )
+                }
+            }
+            isEmailConflict(message) -> {
+                _uiState.update {
+                    it.copy(
+                        isVerifyingOtp = false,
+                        showOtpDialog = false,
+                        otp = "",
+                        otpError = null,
+                        emailError = message,
+                        formError = null,
+                    )
+                }
+            }
+            isRegistrationTokenError(message) -> {
+                _uiState.update {
+                    it.copy(
+                        isVerifyingOtp = false,
+                        otpError = message,
+                    )
+                }
+            }
+            else -> {
+                _uiState.update {
+                    it.copy(
+                        isVerifyingOtp = false,
+                        showOtpDialog = false,
+                        otp = "",
+                        otpError = null,
+                        formError = message,
+                    )
+                }
+            }
+        }
+    }
+
     private fun schedulePasswordValidation() {
         passwordValidationJob?.cancel()
         passwordValidationJob = viewModelScope.launch {
-            delay(PASSWORD_VALIDATION_DEBOUNCE_MS)
+            delay(DEBOUNCE_MS)
             val state = _uiState.value
             _uiState.update {
                 it.copy(
@@ -253,7 +400,33 @@ class RegisterViewModel @Inject constructor(
         else -> null
     }
 
-    companion object {
-        private const val PASSWORD_VALIDATION_DEBOUNCE_MS = 1_500L
+    private fun liveDisplayNameError(displayName: String): String? =
+        if (displayName.isBlank()) null else RegisterValidation.validateDisplayName(displayName)
+
+    private fun liveEmailError(email: String): String? =
+        if (email.isBlank()) null else EmailRules.validateForRegistration(email)
+
+    private fun liveUsernameError(username: String): String? =
+        if (username.isBlank()) null else RegisterValidation.validateUsername(username)
+
+    private companion object {
+        private const val DEBOUNCE_MS = 1_500L
+        private const val USERNAME_TAKEN_MESSAGE = "Tên đăng nhập đã được sử dụng"
+        private const val EMAIL_TAKEN_MESSAGE = "Email đã được đăng ký"
+
+        fun isUsernameConflict(message: String): Boolean =
+            message.contains(USERNAME_TAKEN_MESSAGE, ignoreCase = true) ||
+                message.contains("Username already taken", ignoreCase = true)
+
+        fun isEmailConflict(message: String): Boolean =
+            message.contains(EMAIL_TAKEN_MESSAGE, ignoreCase = true) ||
+                message.contains("Email already registered", ignoreCase = true) ||
+                message.contains("Email hoặc tên đăng nhập đã được đăng ký", ignoreCase = true)
+
+        fun isRegistrationTokenError(message: String): Boolean =
+            message.contains("invalid_registration_token", ignoreCase = true) ||
+                message.contains("Invalid or expired registration token", ignoreCase = true) ||
+                message.contains("Phiên đăng ký không hợp lệ", ignoreCase = true) ||
+                message.contains("Vui lòng xác minh OTP", ignoreCase = true)
     }
 }

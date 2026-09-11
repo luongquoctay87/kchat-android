@@ -49,6 +49,7 @@ import com.kchat.data.network.dto.MuteRoomRequest
 import com.kchat.data.network.dto.UpdateRoomRequest
 import com.kchat.data.network.dto.WsEnvelope
 import com.kchat.data.network.mapper.toModel
+import com.kchat.data.network.media.MediaDownloadWriter
 import com.kchat.data.network.media.MediaUploadHelper
 import com.kchat.data.network.ws.KChatWebSocketClient
 import com.kchat.data.network.ws.WsEvent
@@ -120,6 +121,20 @@ class NetworkAuthRepository @Inject constructor(
     }.fold(
         onSuccess = { Result.success(it) },
         onFailure = { Result.failure(Exception(it.apiMessage("Mã OTP không đúng hoặc đã hết hạn"))) },
+    )
+
+    override suspend fun checkUsernameAvailable(username: String): Result<Boolean> = runCatching {
+        api.checkUsername(username.trim()).available
+    }.fold(
+        onSuccess = { Result.success(it) },
+        onFailure = { Result.failure(Exception(it.apiMessage("Không kiểm tra được username"))) },
+    )
+
+    override suspend fun checkEmailAvailable(email: String): Result<Boolean> = runCatching {
+        api.checkEmail(email.trim()).available
+    }.fold(
+        onSuccess = { Result.success(it) },
+        onFailure = { Result.failure(Exception(it.apiMessage("Không kiểm tra được email"))) },
     )
 
     override suspend fun register(
@@ -287,7 +302,7 @@ class NetworkChatRepository @Inject constructor(
         val name = MediaUploadHelper.resolveDisplayName(resolver, uri, displayName)
         val length = MediaUploadHelper.contentLength(resolver, uri)
         if (length > MediaUploadHelper.MAX_BYTES) {
-            error("File vượt quá 25MB")
+            error("File vượt quá 100MB")
         }
         val body = MediaUploadHelper.requestBody(context, uri, type, length.coerceAtLeast(-1L))
         val part = MultipartBody.Part.createFormData("file", name, body)
@@ -410,20 +425,27 @@ class NetworkChatRepository @Inject constructor(
         }
     }
 
-    override suspend fun downloadMedia(mediaUrl: String, fileName: String): Result<java.io.File> = apiResult("Tải file thất bại") {
+    override suspend fun downloadMedia(
+        mediaUrl: String,
+        fileName: String,
+        onProgress: ((bytesRead: Long, contentLength: Long) -> Unit)?,
+    ): Result<com.kchat.core.model.MediaDownloadResult> = apiResult("Tải file thất bại") {
         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             val url = if (mediaUrl.startsWith("http")) mediaUrl else apiBaseUrl.trimEnd('/') + mediaUrl
             val request = okhttp3.Request.Builder().url(url).get().build()
             okHttpClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) error("Tải file thất bại")
                 val body = response.body ?: error("Tải file thất bại")
-                val safe = fileName.replace(Regex("[^a-zA-Z0-9._\\-]"), "_").ifBlank { "file" }
-                val dir = java.io.File(context.cacheDir, "media").also { it.mkdirs() }
-                val out = java.io.File(dir, "${System.currentTimeMillis()}_$safe")
-                body.byteStream().use { input ->
-                    out.outputStream().use { input.copyTo(it) }
-                }
-                out
+                val contentLength = body.contentLength()
+                val responseMime = body.contentType()?.toString()
+                MediaDownloadWriter.writeToDownloads(
+                    context = context,
+                    fileName = fileName,
+                    mimeType = responseMime ?: "application/octet-stream",
+                    input = body.byteStream(),
+                    contentLength = contentLength,
+                    onProgress = onProgress,
+                )
             }
         }
     }

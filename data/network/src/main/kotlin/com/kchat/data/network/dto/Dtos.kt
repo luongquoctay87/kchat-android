@@ -53,6 +53,11 @@ data class AuthResponse(
 )
 
 @Serializable
+data class AvailabilityResponse(
+    val available: Boolean,
+)
+
+@Serializable
 data class RefreshRequest(
     @SerialName("refresh_token") val refreshToken: String,
 )

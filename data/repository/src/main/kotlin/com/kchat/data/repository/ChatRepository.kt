@@ -72,8 +72,12 @@ interface ChatRepository {
     /** Clear local unread and notify backend the room was viewed. */
     suspend fun markRoomRead(roomId: String)
 
-    /** Download media to app cache (authenticated). */
-    suspend fun downloadMedia(mediaUrl: String, fileName: String): Result<java.io.File>
+    /** Download media into public Downloads (authenticated) with optional progress. */
+    suspend fun downloadMedia(
+        mediaUrl: String,
+        fileName: String,
+        onProgress: ((bytesRead: Long, contentLength: Long) -> Unit)? = null,
+    ): Result<com.kchat.core.model.MediaDownloadResult>
 
     suspend fun createGroup(name: String, memberIds: List<String>): Result<RoomSummary>
 

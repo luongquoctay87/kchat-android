@@ -1,6 +1,7 @@
 package com.kchat.data.network.api
 
 import com.kchat.data.network.dto.AuthResponse
+import com.kchat.data.network.dto.AvailabilityResponse
 import com.kchat.data.network.dto.AddMembersRequest
 import com.kchat.data.network.dto.CallDto
 import com.kchat.data.network.dto.ChangePasswordRequest
@@ -65,6 +66,12 @@ interface KChatApi {
 
     @POST("auth/verify-registration-otp")
     suspend fun verifyRegistrationOtp(@Body body: VerifyOtpRequest): VerifyRegistrationOtpResponse
+
+    @GET("auth/check-username")
+    suspend fun checkUsername(@Query("username") username: String): AvailabilityResponse
+
+    @GET("auth/check-email")
+    suspend fun checkEmail(@Query("email") email: String): AvailabilityResponse
 
     @POST("auth/register")
     suspend fun register(@Body body: RegisterRequest): AuthResponse

@@ -184,10 +184,13 @@ fun RegisterScreen(
     otp: String = "",
     isVerifyingOtp: Boolean = false,
     formError: String? = null,
+    displayNameError: String? = null,
+    emailError: String? = null,
     usernameError: String? = null,
     passwordError: String? = null,
     confirmError: String? = null,
     otpError: String? = null,
+    canSubmit: Boolean = false,
     onDisplayNameChange: (String) -> Unit = {},
     onUsernameChange: (String) -> Unit = {},
     onEmailChange: (String) -> Unit = {},
@@ -234,7 +237,12 @@ fun RegisterScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(modifier = Modifier.height(20.dp))
-            KChatTextField(value = displayName, onValueChange = onDisplayNameChange, label = "Tên hiển thị")
+            KChatTextField(
+                value = displayName,
+                onValueChange = onDisplayNameChange,
+                label = "Tên hiển thị",
+                error = displayNameError,
+            )
             Spacer(modifier = Modifier.height(12.dp))
             KChatTextField(
                 value = username,
@@ -244,7 +252,12 @@ fun RegisterScreen(
                 supportingText = if (usernameError == null) RegisterValidation.USERNAME_HINT else null,
             )
             Spacer(modifier = Modifier.height(12.dp))
-            KChatTextField(value = email, onValueChange = onEmailChange, label = "Email")
+            KChatTextField(
+                value = email,
+                onValueChange = onEmailChange,
+                label = "Email",
+                error = emailError,
+            )
             Spacer(modifier = Modifier.height(12.dp))
             KChatTextField(
                 value = password,
@@ -270,7 +283,7 @@ fun RegisterScreen(
             KChatPrimaryButton(
                 text = if (isSendingOtp) "Đang gửi OTP..." else "Tiếp tục",
                 onClick = onSubmit,
-                enabled = !isSendingOtp,
+                enabled = !isSendingOtp && canSubmit,
             )
             Spacer(modifier = Modifier.height(8.dp))
             TextButton(onClick = onLogin, modifier = Modifier.fillMaxWidth()) {

@@ -68,6 +68,7 @@ import kotlinx.coroutines.flow.filter
 import com.kchat.core.design.KChatColors
 import com.kchat.core.design.KChatDimens
 import com.kchat.core.model.ChatMessage
+import com.kchat.core.model.FileDownloadStatus
 import com.kchat.core.model.PinnedMessage
 import com.kchat.core.model.ReactionCount
 import com.kchat.core.model.MessageType
@@ -149,6 +150,7 @@ fun ChatRoomScreen(
     onOpenGroupInfo: () -> Unit = {},
     onOpenImage: (url: String, title: String) -> Unit = { _, _ -> },
     onOpenFile: (url: String, fileName: String) -> Unit = { _, _ -> },
+    fileDownloadStatuses: Map<String, FileDownloadStatus> = emptyMap(),
     onOpenSearch: () -> Unit = {},
     onOpenCall: (CallType) -> Unit = {},
     onDisappearingChange: (seconds: Int?) -> Unit = {},
@@ -423,6 +425,9 @@ fun ChatRoomScreen(
                                         onOpenFile(url, message.fileName ?: "file")
                                     }
                                 },
+                                fileDownloadStatus = message.mediaUrl
+                                    ?.takeIf { it.isNotBlank() }
+                                    ?.let { fileDownloadStatuses[it] },
                                 onLongClick = {
                                     selectedMessageId = message.id
                                     openSheet(ChatSheet.MessageActions)

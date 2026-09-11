@@ -37,6 +37,8 @@ class UnauthorizedSessionInterceptor(
         val PUBLIC_AUTH_PATHS = setOf(
             "/auth/send-registration-otp",
             "/auth/verify-registration-otp",
+            "/auth/check-username",
+            "/auth/check-email",
             "/auth/register",
             "/auth/login",
             "/auth/refresh",

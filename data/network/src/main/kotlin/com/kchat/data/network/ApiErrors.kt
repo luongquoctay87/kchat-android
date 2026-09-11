@@ -81,9 +81,15 @@ private fun localizeApiMessage(message: String?): String? {
             "Mật khẩu hiện tại không đúng"
         message.contains("upper, lower, digit", ignoreCase = true) ||
             message.contains("special character", ignoreCase = true) ->
-            "Mật khẩu mới phải có ít nhất 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt"
+            "Mật khẩu phải có ít nhất 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt"
+        message.contains("username", ignoreCase = true) &&
+            message.contains("size must be between", ignoreCase = true) ->
+            "Username phải từ 3 đến 64 ký tự"
+        message.contains("password", ignoreCase = true) &&
+            message.contains("size must be between", ignoreCase = true) ->
+            "Mật khẩu phải có ít nhất 8 ký tự"
         message.contains("size must be between", ignoreCase = true) ->
-            "Mật khẩu mới phải có ít nhất 8 ký tự"
+            "Độ dài không hợp lệ"
         message.contains("Invalid credentials", ignoreCase = true) ->
             "Email/tên đăng nhập hoặc mật khẩu không đúng"
         message.contains("Account is locked", ignoreCase = true) ->
@@ -108,8 +114,9 @@ private fun localizeApiMessage(message: String?): String? {
             (message.contains("registration_token", ignoreCase = true) &&
                 message.contains("must not be blank", ignoreCase = true)) ->
             "Vui lòng xác minh OTP trước khi đăng ký"
-        message.contains("Email already registered", ignoreCase = true) ||
-            message.contains("Username or email already registered", ignoreCase = true) ->
+        message.contains("Email already registered", ignoreCase = true) ->
+            "Email đã được đăng ký"
+        message.contains("Username or email already registered", ignoreCase = true) ->
             "Email hoặc tên đăng nhập đã được đăng ký"
         message.contains("Invalid or expired registration token", ignoreCase = true) ||
             message.contains("invalid_registration_token", ignoreCase = true) ->
@@ -143,8 +150,9 @@ private fun localizeApiMessage(message: String?): String? {
             "Dữ liệu không hợp lệ"
         message.contains("Modify window is 15 minutes", ignoreCase = true) ->
             "Chỉ sửa/xóa tin trong vòng 15 phút"
-        message.contains("file exceeds 25MB", ignoreCase = true) ->
-            "File vượt quá 25MB"
+        message.contains("file exceeds 100MB", ignoreCase = true) ||
+            message.contains("file exceeds 25MB", ignoreCase = true) ->
+            "File vượt quá 100MB"
         message.contains("Unexpected error", ignoreCase = true) ->
             "Máy chủ gặp sự cố, vui lòng thử lại sau"
         else -> message

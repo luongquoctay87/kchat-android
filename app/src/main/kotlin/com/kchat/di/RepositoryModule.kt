@@ -1,6 +1,7 @@
 package com.kchat.di
 
 import com.kchat.BuildConfig
+import com.kchat.data.network.media.DataStoreDownloadedMediaStore
 import com.kchat.data.network.auth.DataStoreDeviceTokenStore
 import com.kchat.data.network.auth.DataStorePinLockStore
 import com.kchat.data.network.auth.DataStoreTokenStore
@@ -23,6 +24,7 @@ import com.kchat.data.repository.PinLockTransientLeave
 import com.kchat.data.repository.CallSignalBus
 import com.kchat.data.repository.ChatRepository
 import com.kchat.data.repository.ContactsRepository
+import com.kchat.data.repository.DownloadedMediaStore
 import com.kchat.data.repository.EmergencyWipeCoordinator
 import com.kchat.data.repository.EmergencyWipeStore
 import com.kchat.data.repository.DeviceTokenStore
@@ -127,6 +129,10 @@ object RepositoryModule {
     @Provides
     @Singleton
     fun providePinLockStore(network: DataStorePinLockStore): PinLockStore = network
+
+    @Provides
+    @Singleton
+    fun provideDownloadedMediaStore(impl: DataStoreDownloadedMediaStore): DownloadedMediaStore = impl
 
     @Provides
     @Singleton
